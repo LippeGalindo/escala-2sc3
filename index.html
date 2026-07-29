@@ -691,8 +691,12 @@ function renderTrocas(el){
         <button class="btn decline" data-cancel="${s.id}">Cancelar pedido</button>
       </div>`;
     }
+    const fmtDT = (ts) => new Date(ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+    const createdInfo = s.createdAt
+      ? `<div class="req-note">Solicitada em ${fmtDT(s.createdAt)}</div>`
+      : "";
     const resolvedInfo = (s.resolvedAt && resolvedLabel[s.status])
-      ? `<div class="req-note">${resolvedLabel[s.status]} ${new Date(s.resolvedAt).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'})}</div>`
+      ? `<div class="req-note">${resolvedLabel[s.status]} ${fmtDT(s.resolvedAt)}</div>`
       : "";
     return `<div class="req-row" data-id="${s.id}">
       <div class="req-top">
@@ -700,6 +704,7 @@ function renderTrocas(el){
         <span class="status-pill ${pill}">${pillText}</span>
       </div>
       ${s.note? `<div class="req-note">"${escapeHtml(s.note)}"</div>` : ""}
+      ${createdInfo}
       ${resolvedInfo}
       ${actions}
     </div>`;
