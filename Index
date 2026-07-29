@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Escala 2SC3 — Sobrevoo</title>
+<!-- PWA: permite "Adicionar à Tela de Início" no iPhone e Android com ícone e nome próprios, abrindo em tela cheia -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Escala 2SC3">
+<meta name="application-name" content="Escala 2SC3">
+<meta name="theme-color" content="#0A1930">
+<link rel="apple-touch-icon" href="__LOGO_PLACEHOLDER__">
+<link rel="icon" href="__LOGO_PLACEHOLDER__">
+<link rel="manifest" id="pwaManifest" href="">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A1930;
+    --panel:#11253F;
+    --panel-2:#183050;
+    --border:#254269;
+    --text:#EEF3F8;
+    --muted:#87A2C2;
+    --amber:#EDBB3E;
+    --teal:#4F8B3E;
+    --red:#D6483F;
+    --green:#5FBF8A;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding-bottom:76px;min-height:100vh;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  #app{max-width:520px;margin:0 auto;min-height:100vh;position:relative;}
+
+  /* ---------- Header ---------- */
+  header.top{
+    padding:18px 16px 14px;
+    border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg, #0E2038 0%, #0A1930 100%);
+    position:sticky; top:0; z-index:10;
+  }
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;color:var(--teal);text-transform:uppercase;}
+  .org{font-size:12px;color:var(--muted);margin-top:2px;}
+  .title-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px;}
+  .header-brand{display:flex;align-items:center;gap:10px;min-width:0;}
+  .logo-img{width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0;background:#fff;}
+  h1{font-family:'IBM Plex Mono',monospace;font-size:19px;margin:0;letter-spacing:.02em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .op-badge{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .op-chip{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:13px;background:var(--amber);color:#221900;padding:5px 10px;border-radius:8px;letter-spacing:.05em;}
+  .swap-user{font-size:11px;color:var(--muted);background:none;border:1px solid var(--border);padding:5px 8px;border-radius:8px;cursor:pointer;}
+  .swap-user:hover{border-color:var(--muted);}
+
+  /* ---------- Select Operator Screen ---------- */
+  .select-screen{padding:36px 20px;}
+  .select-screen .logo-hero{display:block;margin:0 auto 14px;width:88px;height:88px;border-radius:50%;object-fit:cover;border:2px solid var(--border);background:#fff;}
+  .select-screen .eyebrow{display:block;text-align:center;margin-bottom:6px;}
+  .select-screen h2{font-family:'IBM Plex Mono',monospace;text-align:center;font-size:20px;margin:0 0 4px;}
+  .select-screen p.sub{text-align:center;color:var(--muted);font-size:13px;margin:0 0 28px;}
+  .op-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .op-btn{
+    font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:16px;
+    background:var(--panel);border:1px solid var(--border);color:var(--text);
+    padding:18px 0;border-radius:var(--radius);cursor:pointer;letter-spacing:.05em;
+    transition:border-color .15s, background .15s;
+  }
+  .op-btn:hover, .op-btn:focus-visible{border-color:var(--amber);background:var(--panel-2);outline:none;}
+
+  /* ---------- Tabs ---------- */
+  nav.tabs{
+    position:fixed;bottom:0;left:0;right:0;z-index:20;
+    background:#0D1D33;border-top:1px solid var(--border);
+    display:flex;max-width:520px;margin:0 auto;
+  }
+  nav.tabs button{
+    flex:1;background:none;border:none;color:var(--muted);padding:11px 2px 9px;
+    font-family:'Inter',sans-serif;font-size:9.3px;letter-spacing:.01em;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:4px;white-space:nowrap;
+  }
+  nav.tabs button .dot{width:5px;height:5px;border-radius:50%;background:transparent;}
+  nav.tabs button.active{color:var(--text);}
+  nav.tabs button.active .dot{background:var(--amber);}
+
+  main{padding:16px 16px 8px;}
+  .section-title{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:18px 0 10px;}
+  .section-title:first-child{margin-top:0;}
+  .month-hint{font-size:11px;color:var(--muted);margin:-6px 0 14px;}
+
+  /* ---------- Month selector ---------- */
+  .month-select-wrap label{margin-top:0;}
+  .month-select-wrap select{width:100%;}
+
+  /* ---------- Escala list ---------- */
+  .day-row{
+    display:flex;align-items:center;gap:12px;
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:10px 12px;margin-bottom:7px;
+  }
+  .day-row.mine{border-color:var(--amber);background:#231A08;}
+  .day-row.red-day{border-left:4px solid var(--red);}
+  .day-num{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:18px;width:34px;text-align:center;}
+  .day-wk{font-size:10px;color:var(--muted);width:34px;text-align:center;margin-top:-2px;}
+  .day-wk.red{color:var(--red);font-weight:700;}
+  .day-col-date{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+  .day-shifts-col{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0;}
+  .day-shifts{display:flex;gap:6px;flex-wrap:wrap;}
+  .shift-chip{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;padding:4px 7px;border-radius:6px;
+    background:var(--panel-2);border:1px solid var(--border);color:var(--muted);white-space:nowrap;
+  }
+  .shift-chip b{color:var(--text);}
+  .shift-chip.me{border-color:var(--amber);color:var(--amber);}
+  .shift-chip.me b{color:var(--amber);}
+  .shift-chip.empty{opacity:.45;}
+  .t24-block{
+    display:flex;flex-direction:column;gap:5px;
+    background:var(--panel-2);border:1px solid var(--border);border-radius:7px;
+    padding:7px 9px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+  }
+  .t24-block.empty{opacity:.5;}
+  .t24-tag{background:var(--border);color:var(--text);padding:2px 5px;border-radius:4px;font-weight:700;flex-shrink:0;font-size:10px;}
+  .t24-flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .t24-op{font-weight:700;font-size:13px;padding:2px 7px;border-radius:5px;background:var(--panel);border:1px solid var(--border);color:var(--text);flex-shrink:0;}
+  .t24-op.dash{color:var(--muted);font-weight:400;}
+  .t24-label{color:var(--muted);display:flex;flex-direction:column;line-height:1.15;text-align:center;flex-shrink:0;}
+  .t24-label b{color:var(--text);font-size:11px;}
+  .t24-label .t24-tiny{font-size:8.5px;letter-spacing:.04em;text-transform:uppercase;}
+  .t24-arrow{color:var(--muted);flex-shrink:0;}
+  .t24-sub{color:var(--muted);font-size:9.5px;}
+  .t24-sub b{color:var(--text);}
+  .t24-op.me{background:var(--amber);color:#221900;border-color:var(--amber);}
+  .t24-block.me{border-color:var(--amber);}
+
+  /* ---------- Horas ---------- */
+  .hours-hero{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:20px 14px;text-align:center;margin-bottom:14px;
+  }
+  .hours-dual{display:flex;align-items:center;justify-content:center;gap:16px;}
+  .hours-col{text-align:center;}
+  .hours-arrow{color:var(--muted);font-size:18px;flex-shrink:0;}
+  .hours-big{font-family:'IBM Plex Mono',monospace;font-size:34px;font-weight:700;color:var(--amber);line-height:1;}
+  .hours-label{font-size:11px;color:var(--muted);margin-top:6px;}
+  .day-row.highlight{
+    outline:2px solid var(--teal);
+    animation:histPulse 1.4s ease-in-out 2;
+  }
+  @keyframes histPulse{
+    0%,100%{background:var(--panel);}
+    50%{background:#1E3A1C;}
+  }
+  .swap-jump{cursor:pointer;}
+  .swap-jump:active{opacity:.75;}
+  .jump-hint{font-size:9.5px;color:var(--muted);margin-top:5px;}
+  .breakdown{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px;}
+  .bd-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:12px 8px;text-align:center;}
+  .bd-num{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;}
+  .bd-label{font-size:10px;color:var(--muted);margin-top:3px;}
+  .rank-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--panel);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;font-family:'IBM Plex Mono',monospace;font-size:13px;}
+  .rank-row.me{border-color:var(--amber);}
+  .rank-row span.h{color:var(--muted);}
+
+  /* ---------- Trocas / Escalante ---------- */
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;}
+  .card h3{font-family:'IBM Plex Mono',monospace;font-size:13px;margin:0 0 10px;color:var(--text);text-transform:uppercase;letter-spacing:.04em;}
+  label{display:block;font-size:11px;color:var(--muted);margin:10px 0 5px;}
+  select, input[type=text], input[type=password], .btn{
+    width:100%;font-family:'Inter',sans-serif;font-size:14px;padding:10px 10px;
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:8px;
+  }
+  select:focus, input:focus{outline:2px solid var(--amber);outline-offset:1px;}
+  .btn{cursor:pointer;font-weight:600;text-align:center;border:1px solid var(--amber);background:var(--amber);color:#221900;margin-top:14px;}
+  .btn:hover{filter:brightness(1.06);}
+  .btn.secondary{background:none;color:var(--teal);border-color:var(--teal);}
+  .btn.decline{background:none;color:var(--red);border-color:var(--red);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .req-row{border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--panel-2);}
+  .req-top{display:flex;justify-content:space-between;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:12.5px;gap:8px;}
+  .req-note{font-size:12px;color:var(--muted);margin-top:6px;}
+  .mode-tag{font-size:9px;background:var(--teal);color:#08170a;padding:2px 6px;border-radius:5px;font-weight:700;letter-spacing:.03em;margin-right:4px;}
+  .field-warning{font-size:11.5px;color:var(--red);background:#2A1414;border:1px solid var(--red);border-radius:8px;padding:8px 10px;margin-top:8px;line-height:1.4;}
+  .status-pill{font-size:10px;padding:3px 8px;border-radius:20px;font-family:'IBM Plex Mono',monospace;letter-spacing:.03em;flex-shrink:0;}
+  .status-pending{background:#3A2F0E;color:var(--amber);}
+  .status-accepted{background:#0F3323;color:var(--green);}
+  .status-declined{background:#3A1414;color:var(--red);}
+  .status-cancelled{background:#22293A;color:var(--muted);}
+  .req-actions{display:flex;gap:8px;margin-top:10px;}
+  .req-actions .btn{margin-top:0;}
+  .empty-state{text-align:center;color:var(--muted);font-size:12.5px;padding:24px 10px;border:1px dashed var(--border);border-radius:var(--radius);}
+  .banner{font-size:11.5px;color:var(--muted);background:var(--panel-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:16px;line-height:1.5;}
+  .toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--green);color:#0A2416;font-weight:600;font-size:13px;padding:9px 16px;border-radius:20px;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
+
+  /* ---------- Escalante builder ---------- */
+  .builder-row{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:7px;}
+  .builder-row.red-day{border-left:4px solid var(--red);}
+  .builder-top{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;}
+  .builder-top .wk{font-size:10px;color:var(--muted);font-weight:400;}
+  .builder-top .wk.red{color:var(--red);font-weight:700;}
+  .builder-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .builder-grid label{margin:0 0 4px;font-size:9.5px;}
+  .builder-grid select{padding:7px 6px;font-size:12px;}
+  .lock-screen{padding:40px 20px;}
+  .lock-screen h2{font-family:'IBM Plex Mono',monospace;text-align:center;font-size:18px;}
+  .lock-screen p{text-align:center;color:var(--muted);font-size:12.5px;}
+  ::selection{background:var(--amber);color:#221900;}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ======================= CONSTANTS ======================= */
+const LOGO_B64 = "data:image/jpeg;base64,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";
+const OPERATORS = ["MAQ","MON","MAI","IVN","OTO","DAN","BAZ","ITA","GLO","REG"];
+const SEED_MONTH = "2026-08";
+const WEEKDAYS = ["DOM","SEG","TER","QUA","QUI","SEX","SAB"];
+const MONTH_NAMES = ["JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO","JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"];
+const MONTHS_LIST_KEY = "months:list";
+const ADMIN_CODE = "sobrevoo2026";
+
+// ---- Supabase (banco real, substitui o armazenamento interno do Claude) ----
+const SUPABASE_URL = "https://jvmwueqtwqehcghfgkbo.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2bXd1ZXF0d3FlaGNnaGZna2JvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyNjkyNzgsImV4cCI6MjEwMDg0NTI3OH0.xi5RZ_Dh_DerUBXsipW283YdxvvQrL6GZn6Xnj23GWM";
+const SB_HEADERS = {
+  "apikey": SUPABASE_KEY,
+  "Authorization": "Bearer " + SUPABASE_KEY,
+  "Content-Type": "application/json"
+};
+
+// Extraído da planilha 08-ESCALA-AGOSTO-2026-_AD.xlsx (aba AGOSTO-2026)
+const SEED_SCHEDULE = [
+ {day:1,  sitfaa:null, t12:null,  t24:"IVN"},
+ {day:2,  sitfaa:null, t12:null,  t24:"GLO"},
+ {day:3,  sitfaa:null, t12:"BAZ", t24:"OTO"},
+ {day:4,  sitfaa:null, t12:"BAZ", t24:"DAN"},
+ {day:5,  sitfaa:null, t12:"MON", t24:"IVN"},
+ {day:6,  sitfaa:null, t12:"MAI", t24:"MAQ"},
+ {day:7,  sitfaa:null, t12:"REG", t24:"DAN"},
+ {day:8,  sitfaa:null, t12:null,  t24:"OTO"},
+ {day:9,  sitfaa:null, t12:null,  t24:"REG"},
+ {day:10, sitfaa:null, t12:"DAN", t24:"ITA"},
+ {day:11, sitfaa:null, t12:"GLO", t24:"MON"},
+ {day:12, sitfaa:null, t12:"MAQ", t24:"MAI"},
+ {day:13, sitfaa:null, t12:"IVN", t24:"DAN"},
+ {day:14, sitfaa:null, t12:"GLO", t24:"REG"},
+ {day:15, sitfaa:null, t12:null,  t24:"MAQ"},
+ {day:16, sitfaa:null, t12:null,  t24:"ITA"},
+ {day:17, sitfaa:null, t12:"OTO", t24:"MAI"},
+ {day:18, sitfaa:null, t12:"IVN", t24:"GLO"},
+ {day:19, sitfaa:null, t12:"DAN", t24:"REG"},
+ {day:20, sitfaa:null, t12:"MAQ", t24:"BAZ"},
+ {day:21, sitfaa:null, t12:"ITA", t24:"GLO"},
+ {day:22, sitfaa:null, t12:null,  t24:"MON"},
+ {day:23, sitfaa:null, t12:null,  t24:"BAZ"},
+ {day:24, sitfaa:null, t12:"REG", t24:"IVN"},
+ {day:25, sitfaa:null, t12:"ITA", t24:"BAZ"},
+ {day:26, sitfaa:null, t12:"GLO", t24:"MAQ"},
+ {day:27, sitfaa:null, t12:"MON", t24:"OTO"},
+ {day:28, sitfaa:null, t12:"MAI", t24:"ITA"},
+ {day:29, sitfaa:null, t12:null,  t24:"MAI"},
+ {day:30, sitfaa:null, t12:null,  t24:"DAN"},
+ {day:31, sitfaa:null, t12:"OTO", t24:"MON"},
+];
+
+const HOURS = {sitfaa:8, t12:12, t24:24};
+const SHIFT_LABEL = {sitfaa:"SITFAA 8H", t12:"12H (08–20)", t24:"24H (14–14)"};
+
+/* ======================= STATE ======================= */
+let state = {
+  screen: "loading",
+  operator: null,
+  tab: "escala",
+  months: [],
+  viewMonth: null,
+  scheduleCache: {},
+  swapsCache: {},
+  originalCache: {},
+  sheetsWebhook: null,
+  adminUnlocked: false,
+  escalanteMonth: null,
+  escalanteDraft: null,
+  swapFilter: "todas",
+  histMonth: null,
+  reqMode: "troca",
+};
+
+/* ======================= DATE HELPERS ======================= */
+function monthLabel(monthKey){ const [y,m]=monthKey.split("-"); return MONTH_NAMES[parseInt(m,10)-1] + " " + y; }
+function daysInMonth(monthKey){ const [y,m]=monthKey.split("-").map(Number); return new Date(y, m, 0).getDate(); }
+function weekdayIdx(monthKey, day){ const [y,m]=monthKey.split("-").map(Number); return new Date(y, m-1, day).getDay(); }
+function weekdayOf(monthKey, day){ return WEEKDAYS[weekdayIdx(monthKey, day)]; }
+function isRedDay(monthKey, day){ const wd = weekdayIdx(monthKey, day); return wd===0 || wd===6 || wd===3; }
+function nextMonthKey(monthKey){ let [y,m]=monthKey.split("-").map(Number); m+=1; if(m>12){m=1;y+=1;} return y+"-"+String(m).padStart(2,"0"); }
+function blankSchedule(monthKey){ const n=daysInMonth(monthKey); const arr=[]; for(let d=1; d<=n; d++) arr.push({day:d, sitfaa:null, t12:null, t24:null}); return arr; }
+
+// ---- Integração Google Sheets (formato: DIA,SITFAA,12H,24H) ----
+function normCell(v){
+  if(v===undefined || v===null) return null;
+  const t = String(v).trim().toUpperCase();
+  return (t==="" || t==="-" || t==="—" || t==="---") ? null : t;
+}
+function parseScheduleCsv(text, monthKey){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0);
+  if(lines.length===0) throw new Error("planilha vazia");
+  const startIdx = /dia/i.test(lines[0]) ? 1 : 0; // pula cabeçalho se existir
+  const byDay = {};
+  for(let i=startIdx; i<lines.length; i++){
+    const cols = lines[i].split(",").map(c=>c.trim());
+    const day = parseInt(cols[0], 10);
+    if(!day) continue;
+    byDay[day] = { day, sitfaa: normCell(cols[1]), t12: normCell(cols[2]), t24: normCell(cols[3]) };
+  }
+  const n = daysInMonth(monthKey);
+  const out = [];
+  for(let d=1; d<=n; d++){
+    out.push(byDay[d] || {day:d, sitfaa:null, t12:null, t24:null});
+  }
+  return out;
+}
+function buildScheduleCsv(sch){
+  const lines = ["DIA,SITFAA,12H,24H"];
+  sch.forEach(d=>lines.push(`${d.day},${d.sitfaa||""},${d.t12||""},${d.t24||""}`));
+  return lines.join("\n");
+}
+
+/* ======================= STORAGE HELPERS (Supabase) ======================= */
+async function kvGet(key){
+  const url = `${SUPABASE_URL}/rest/v1/app_kv?key=eq.${encodeURIComponent(key)}&select=value`;
+  const res = await fetch(url, { headers: SB_HEADERS });
+  if(!res.ok) throw new Error("Supabase GET falhou: " + res.status);
+  const rows = await res.json();
+  if(!rows.length) throw new Error("chave não encontrada: " + key);
+  return rows[0].value;
+}
+async function kvSet(key, value){
+  const url = `${SUPABASE_URL}/rest/v1/app_kv`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { ...SB_HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify([{ key, value, updated_at: new Date().toISOString() }])
+  });
+  if(!res.ok) throw new Error("Supabase SET falhou: " + res.status);
+}
+
+async function loadMonthsList(){
+  try{
+    return await kvGet(MONTHS_LIST_KEY);
+  }catch(e){
+    const seed = [SEED_MONTH];
+    try{ await kvSet(MONTHS_LIST_KEY, seed); }catch(e2){}
+    return seed;
+  }
+}
+async function saveMonthsList(list){
+  state.months = list;
+  try{ await kvSet(MONTHS_LIST_KEY, list); }catch(e){ console.error("erro ao salvar lista de meses", e); }
+}
+async function loadSchedule(monthKey){
+  try{
+    return await kvGet("schedule:"+monthKey);
+  }catch(e){
+    const seed = monthKey === SEED_MONTH ? JSON.parse(JSON.stringify(SEED_SCHEDULE)) : blankSchedule(monthKey);
+    try{ await kvSet("schedule:"+monthKey, seed); }catch(e2){}
+    return seed;
+  }
+}
+async function saveSchedule(monthKey, sch){
+  state.scheduleCache[monthKey] = sch;
+  try{ await kvSet("schedule:"+monthKey, sch); }catch(e){ console.error("erro ao salvar escala", e); }
+}
+async function loadSwaps(monthKey){
+  try{
+    return await kvGet("swaps:"+monthKey);
+  }catch(e){
+    try{ await kvSet("swaps:"+monthKey, []); }catch(e2){}
+    return [];
+  }
+}
+async function saveSwaps(monthKey, list){
+  state.swapsCache[monthKey] = list;
+  try{ await kvSet("swaps:"+monthKey, list); }catch(e){ console.error("erro ao salvar trocas", e); }
+}
+async function loadOriginalSchedule(monthKey){
+  try{
+    return await kvGet("schedule_orig:"+monthKey);
+  }catch(e){
+    // fallback para meses criados antes desse recurso: usa a escala atual como linha de base
+    const cur = state.scheduleCache[monthKey] || await loadSchedule(monthKey);
+    const clone = JSON.parse(JSON.stringify(cur));
+    try{ await kvSet("schedule_orig:"+monthKey, clone); }catch(e2){}
+    return clone;
+  }
+}
+async function saveOriginalSchedule(monthKey, sch){
+  state.originalCache[monthKey] = sch;
+  try{ await kvSet("schedule_orig:"+monthKey, sch); }catch(e){ console.error("erro ao salvar escala original", e); }
+}
+async function ensureMonthLoaded(monthKey){
+  if(!state.scheduleCache[monthKey]) state.scheduleCache[monthKey] = await loadSchedule(monthKey);
+  if(!state.swapsCache[monthKey]) state.swapsCache[monthKey] = await loadSwaps(monthKey);
+  if(!state.originalCache[monthKey]) state.originalCache[monthKey] = await loadOriginalSchedule(monthKey);
+}
+function curSchedule(){ return state.scheduleCache[state.viewMonth]; }
+function curSwaps(){ return state.swapsCache[state.viewMonth]; }
+
+/* ======================= UTIL ======================= */
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>t.classList.remove("show"), 2200);
+}
+function myDuties(op){
+  const out = [];
+  for(const d of curSchedule()){
+    for(const type of ["t24","t12","sitfaa"]){
+      if(d[type] === op) out.push({day:d.day, type});
+    }
+  }
+  return out;
+}
+// true se `op` já tem QUALQUER serviço lançado no dia `day` daquele mês (em qualquer um dos 3 turnos)
+function operatorBusyOnDay(sch, day, op){
+  const row = sch.find(d=>d.day===day);
+  if(!row || !op) return false;
+  return ["t24","t12","sitfaa"].some(t=>row[t]===op);
+}
+function computeHoursFor(sch){
+  const totals = {}; OPERATORS.forEach(o=>totals[o]={t24:0,t12:0,sitfaa:0,total:0,svc:0});
+  for(const d of sch){
+    for(const type of ["t24","t12","sitfaa"]){
+      const op = d[type];
+      if(op && totals[op]){
+        totals[op][type]++;
+        totals[op].total += HOURS[type];
+        totals[op].svc++;
+      }
+    }
+  }
+  return totals;
+}
+function computeHours(){ return computeHoursFor(curSchedule()); }
+// marcador textual (para <option>, que não aceita cor) e em HTML colorido (para texto normal)
+function redSuffix(day){ return isRedDay(state.viewMonth, day) ? " 🔴" : ""; }
+function dayColored(day){
+  const p = String(day).padStart(2,'0');
+  return isRedDay(state.viewMonth, day) ? `<span style="color:var(--red);font-weight:700;">${p}</span>` : p;
+}
+function escapeHtml(str){
+  const d = document.createElement("div"); d.textContent = str; return d.innerHTML;
+}
+
+/* ======================= RENDER: SHELL ======================= */
+function render(){
+  const app = document.getElementById("app");
+  if(state.screen === "loading"){
+    app.innerHTML = `<div style="padding:60px 20px;text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:13px;">CARREGANDO ESCALA…</div>`;
+    return;
+  }
+  if(state.screen === "select"){
+    app.innerHTML = `
+      <div class="select-screen">
+        <img src="${LOGO_B64}" class="logo-hero" alt="Brasão 2SC3 Sobrevoo">
+        <span class="eyebrow mono" style="display:block;text-align:center;">2SC3 · SEÇÃO DE SOBREVOO</span>
+        <h2>Quem é você?</h2>
+        <p class="sub">Selecione sua sigla para acessar a escala</p>
+        <div class="op-grid">
+          ${OPERATORS.map(o=>`<button class="op-btn mono" data-op="${o}">${o}</button>`).join("")}
+        </div>
+      </div>`;
+    app.querySelectorAll(".op-btn").forEach(b=>{
+      b.addEventListener("click", ()=>{
+        state.operator = b.dataset.op;
+        state.screen = "main";
+        state.tab = "escala";
+        render();
+      });
+    });
+    return;
+  }
+
+  app.innerHTML = `
+    <header class="top">
+      <div class="eyebrow mono">2SC3 · SEÇÃO DE SOBREVOO</div>
+      <div class="org">Escala de Serviço — Estado-Maior da Aeronáutica</div>
+      <div class="title-row">
+        <div class="header-brand">
+          <img src="${LOGO_B64}" class="logo-img" alt="Brasão 2SC3 Sobrevoo">
+          <h1>${monthLabel(state.viewMonth)}</h1>
+        </div>
+        <div class="op-badge">
+          <span class="op-chip">${state.operator}</span>
+          <button class="swap-user" id="switchUserBtn">trocar</button>
+        </div>
+      </div>
+    </header>
+    <main id="mainContent"></main>
+    <nav class="tabs">
+      <button data-tab="escala" class="${state.tab==='escala'?'active':''}"><span class="dot"></span>ESCALA</button>
+      <button data-tab="historico" class="${state.tab==='historico'?'active':''}"><span class="dot"></span>HISTÓRICO</button>
+      <button data-tab="horas" class="${state.tab==='horas'?'active':''}"><span class="dot"></span>HORAS</button>
+      <button data-tab="trocas" class="${state.tab==='trocas'?'active':''}"><span class="dot"></span>TROCAS</button>
+      <button data-tab="escalante" class="${state.tab==='escalante'?'active':''}"><span class="dot"></span>ESCALANTE</button>
+    </nav>
+  `;
+  document.getElementById("switchUserBtn").addEventListener("click", ()=>{
+    state.screen = "select";
+    render();
+  });
+  app.querySelectorAll("nav.tabs button").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      state.tab = b.dataset.tab;
+      if(state.tab === "escalante" && state.adminUnlocked && !state.escalanteMonth){
+        openEscalanteMonth(nextMonthKey(state.months[state.months.length-1]));
+      } else if(state.tab === "historico") {
+        const m = state.histMonth && state.months.includes(state.histMonth) ? state.histMonth : state.months[state.months.length-1];
+        openHistorico(m);
+      } else {
+        render();
+      }
+    });
+  });
+
+  const content = document.getElementById("mainContent");
+  if(state.tab === "escala") renderEscala(content);
+  if(state.tab === "historico") renderHistorico(content);
+  if(state.tab === "horas") renderHoras(content);
+  if(state.tab === "trocas") renderTrocas(content);
+  if(state.tab === "escalante") renderEscalante(content);
+}
+
+/* ======================= RENDER: ESCALA ======================= */
+function renderEscala(el){
+  const sch = curSchedule();
+  const totalDays = daysInMonth(state.viewMonth);
+  const rows = sch.map((d, idx)=>{
+    const mine = [d.t24,d.t12,d.sitfaa].includes(state.operator);
+    const red = isRedDay(state.viewMonth, d.day);
+    const chip = (val, label) => {
+      if(!val) return `<span class="shift-chip empty">${label} —</span>`;
+      const isMe = val === state.operator;
+      return `<span class="shift-chip ${isMe?'me':''}">${label} <b>${val}</b></span>`;
+    };
+    const nextDayLabel = d.day === totalDays ? "01 (mês seg.)" : String(d.day+1).padStart(2,'0');
+    // quem sai às 14h hoje é o operador que entrou no turno 24h do dia anterior
+    const prevDay = idx > 0 ? sch[idx-1] : null;
+    const outOp = prevDay ? prevDay.t24 : null;
+    const inOp = d.t24;
+    const isMeOut = outOp === state.operator;
+    const isMeIn = inOp === state.operator;
+    const t24Block = `<div class="t24-block ${(isMeOut||isMeIn)?'me':''} ${(!outOp && !inOp)?'empty':''}">
+        <div class="t24-flow">
+          <span class="t24-tag">24H</span>
+          <span class="t24-op ${isMeOut?'me':''} ${!outOp?'dash':''}">${outOp || '—'}</span>
+          <span class="t24-label"><b>sai 14h</b><span class="t24-tiny">hoje</span></span>
+          <span class="t24-arrow">→</span>
+          <span class="t24-label"><b>entra 14h</b><span class="t24-tiny">hoje</span></span>
+          <span class="t24-op ${isMeIn?'me':''} ${!inOp?'dash':''}">${inOp || '—'}</span>
+        </div>
+        <div class="t24-sub">${inOp ? `<b>${inOp}</b> fica de serviço 24h: entra hoje às 14h e sai amanhã (dia ${nextDayLabel}) às 14h` : 'sem operador 24h neste dia'}</div>
+      </div>`;
+    return `<div class="day-row ${mine?'mine':''} ${red?'red-day':''}">
+      <div class="day-col-date">
+        <div class="day-num mono">${String(d.day).padStart(2,'0')}</div>
+        <div class="day-wk mono ${red?'red':''}">${weekdayOf(state.viewMonth, d.day)}</div>
+      </div>
+      <div class="day-shifts-col">
+        ${t24Block}
+        <div class="day-shifts">
+          ${chip(d.t12,"12H")}
+          ${chip(d.sitfaa,"SITFAA")}
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  el.innerHTML = `
+    <div class="month-select-wrap">
+      <label>Mês</label>
+      <select id="monthSel">
+        ${state.months.map(m=>`<option value="${m}" ${m===state.viewMonth?'selected':''}>${monthLabel(m)}</option>`).join("")}
+      </select>
+    </div>
+    <div class="banner">Turno 24H: o bloco mostra quem <b>sai às 14h</b> (à esquerda) e quem <b>entra às 14h</b> (à direita) naquele dia — o operador que entra fica de serviço até 14h do dia seguinte. Turno 12H: entra 8h, sai 20h (dias úteis). SITFAA: expediente 8h, atualmente desativado. Suas escalas ficam destacadas em âmbar. Sábados, domingos e quartas-feiras são <b style="color:var(--red)">escala vermelha</b> (barra vermelha à esquerda).</div>
+    <div class="section-title">Dias do mês</div>
+    ${rows}
+  `;
+  document.getElementById("monthSel").addEventListener("change", async (e)=>{
+    const m = e.target.value;
+    state.viewMonth = m;
+    await ensureMonthLoaded(m);
+    render();
+  });
+}
+
+/* ======================= RENDER: HORAS ======================= */
+function renderHoras(el){
+  const curTotals = computeHoursFor(curSchedule());
+  const origSch = state.originalCache[state.viewMonth] || curSchedule();
+  const origTotals = computeHoursFor(origSch);
+  const meCur = curTotals[state.operator];
+  const meOrig = origTotals[state.operator];
+  const changed = meCur.total !== meOrig.total;
+  const ranking = OPERATORS.slice().sort((a,b)=>curTotals[b].total-curTotals[a].total);
+
+  el.innerHTML = `
+    <div class="month-hint mono">${monthLabel(state.viewMonth)}</div>
+    <div class="hours-hero">
+      <div class="hours-dual">
+        <div class="hours-col">
+          <div class="hours-big mono" style="font-size:30px;">${meOrig.total}h</div>
+          <div class="hours-label">escala original</div>
+        </div>
+        <div class="hours-arrow">→</div>
+        <div class="hours-col">
+          <div class="hours-big mono" style="color:${changed?'var(--green)':'var(--amber)'}">${meCur.total}h</div>
+          <div class="hours-label">atual (com trocas)</div>
+        </div>
+      </div>
+      <div class="hours-label" style="margin-top:8px;">${meCur.svc} serviço${meCur.svc===1?'':'s'} na escala atual</div>
+    </div>
+    <div class="breakdown">
+      <div class="bd-card"><div class="bd-num mono">${meCur.t24}</div><div class="bd-label">turnos 24H</div></div>
+      <div class="bd-card"><div class="bd-num mono">${meCur.t12}</div><div class="bd-label">turnos 12H</div></div>
+      <div class="bd-card"><div class="bd-num mono">${meCur.sitfaa}</div><div class="bd-label">SITFAA</div></div>
+    </div>
+    <div class="section-title">Comparativo entre operadores (original → atual)</div>
+    ${ranking.map(o=>`
+      <div class="rank-row ${o===state.operator?'me':''}">
+        <span>${o}</span>
+        <span class="h">${origTotals[o].total}h → <b style="color:${origTotals[o].total!==curTotals[o].total?'var(--green)':'var(--text)'}">${curTotals[o].total}h</b></span>
+      </div>
+    `).join("")}
+  `;
+}
+
+/* ======================= RENDER: TROCAS ======================= */
+function renderTrocas(el){
+  const my = myDuties(state.operator);
+  const swaps = curSwaps();
+  const incoming = swaps.filter(s=>s.toOp===state.operator && s.status==="pendente");
+  const outgoing = swaps.filter(s=>s.fromOp===state.operator);
+  const history = swaps.filter(s=>s.status!=="pendente" && (s.fromOp===state.operator || s.toOp===state.operator));
+  const filter = state.swapFilter || "todas";
+  const all = swaps.slice().sort((a,b)=>b.createdAt-a.createdAt)
+    .filter(s => filter==="todas" ? true : s.status===filter);
+  const reqMode = state.reqMode || "troca";
+
+  function reqRow(s, mode){
+    const pillMap = {pendente:["status-pending","PENDENTE"], aceito:["status-accepted","ACEITO"], recusado:["status-declined","RECUSADO"], cancelado:["status-cancelled","CANCELADO"]};
+    const [pill, pillText] = pillMap[s.status] || ["status-declined", s.status.toUpperCase()];
+    const isAssuncao = (s.mode||"troca") === "assuncao";
+    const mainLine = isAssuncao
+      ? `${s.fromOp} assume de ${s.toOp} — dia ${dayColored(s.fromDay)} (${SHIFT_LABEL[s.type]})`
+      : `${s.fromOp} dia ${dayColored(s.fromDay)} (${SHIFT_LABEL[s.type]}) ⇄ ${s.toOp} dia ${dayColored(s.toDay)}`;
+    let actions = "";
+    if(mode === "respond"){
+      actions = `<div class="req-actions">
+        <button class="btn" data-accept="${s.id}">Aceitar</button>
+        <button class="btn decline" data-decline="${s.id}">Recusar</button>
+      </div>`;
+    } else if(mode === "cancel"){
+      actions = `<div class="req-actions">
+        <button class="btn decline" data-cancel="${s.id}">Cancelar pedido</button>
+      </div>`;
+    }
+    return `<div class="req-row" data-id="${s.id}">
+      <div class="req-top">
+        <span>${isAssuncao?'<span class="mode-tag">ASSUNÇÃO</span> ':''}${mainLine}</span>
+        <span class="status-pill ${pill}">${pillText}</span>
+      </div>
+      ${s.note? `<div class="req-note">"${escapeHtml(s.note)}"</div>` : ""}
+      ${actions}
+    </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="month-hint mono">${monthLabel(state.viewMonth)}</div>
+    <div class="banner">Uma troca só é efetivada depois que o colega aceita o pedido pelo app. Trocas acontecem sempre entre turnos do mesmo tipo (24H↔24H, 12H↔12H, SITFAA↔SITFAA), e não é possível trocar para um dia em que o operador já tenha outro serviço lançado. Dias marcados com 🔴 são escala vermelha (sábado, domingo ou quarta-feira).</div>
+
+    <div class="card">
+      <h3>Solicitar</h3>
+      <label for="reqModeSel">Tipo de pedido</label>
+      <select id="reqModeSel">
+        <option value="troca" ${reqMode==='troca'?'selected':''}>Troca (imediata, mesmo tipo de turno)</option>
+        <option value="assuncao" ${reqMode==='assuncao'?'selected':''}>Assumir serviço (colega paga depois)</option>
+      </select>
+
+      <div id="modeTroca" style="display:${reqMode==='troca'?'block':'none'}">
+        ${my.length===0? `<div class="empty-state">Você não tem serviços neste mês.</div>` : `
+        <label for="mySel">Seu serviço</label>
+        <select id="mySel">
+          ${my.map(d=>`<option value="${d.day}|${d.type}">Dia ${String(d.day).padStart(2,'0')} — ${SHIFT_LABEL[d.type]}${redSuffix(d.day)}</option>`).join("")}
+        </select>
+
+        <label for="colSel">Trocar com</label>
+        <select id="colSel">
+          ${OPERATORS.filter(o=>o!==state.operator).map(o=>`<option value="${o}">${o}</option>`).join("")}
+        </select>
+
+        <label for="theirSel">Serviço do colega</label>
+        <select id="theirSel"><option>—</option></select>
+        <div class="field-warning" id="trocaWarning" style="display:none"></div>
+
+        <label for="noteInput">Mensagem (opcional)</label>
+        <input id="noteInput" type="text" placeholder="ex: preciso trocar por compromisso pessoal">
+
+        <button class="btn" id="submitSwap" disabled>Enviar pedido de troca</button>
+        `}
+      </div>
+
+      <div id="modeAssuncao" style="display:${reqMode==='assuncao'?'block':'none'}">
+        <label for="assTypeSel">Tipo de turno a assumir</label>
+        <select id="assTypeSel">
+          <option value="t24">${SHIFT_LABEL.t24}</option>
+          <option value="t12">${SHIFT_LABEL.t12}</option>
+          <option value="sitfaa">${SHIFT_LABEL.sitfaa}</option>
+        </select>
+
+        <label for="assColSel">De qual colega</label>
+        <select id="assColSel">
+          ${OPERATORS.filter(o=>o!==state.operator).map(o=>`<option value="${o}">${o}</option>`).join("")}
+        </select>
+
+        <label for="assDaySel">Dia do colega a assumir</label>
+        <select id="assDaySel"><option>—</option></select>
+        <div class="field-warning" id="assWarning" style="display:none"></div>
+
+        <label for="assNoteInput">Observação (obrigatório) — explique como/quando será pago</label>
+        <input id="assNoteInput" type="text" placeholder="ex: MAQ pega serviço meu depois, ainda sem data definida">
+
+        <button class="btn" id="submitAssuncao" disabled>Enviar pedido de assunção</button>
+      </div>
+    </div>
+
+    <div class="section-title">Pedidos recebidos</div>
+    ${incoming.length===0? `<div class="empty-state">Nenhum pedido pendente para você.</div>` :
+      incoming.map(s=>reqRow(s, "respond")).join("")}
+
+    <div class="section-title">Meus pedidos enviados</div>
+    ${outgoing.filter(s=>s.status==="pendente").length===0? `<div class="empty-state">Você não tem pedidos pendentes.</div>` :
+      outgoing.filter(s=>s.status==="pendente").map(s=>reqRow(s, "cancel")).join("")}
+
+    <div class="section-title">Meu histórico</div>
+    ${history.length===0? `<div class="empty-state">Nenhuma troca sua concluída ainda.</div>` :
+      history.map(s=>reqRow(s, "none")).join("")}
+
+    <div class="section-title">Trocas de todos os operadores</div>
+    <div class="month-select-wrap">
+      <label for="swapFilterSel">Ver</label>
+      <select id="swapFilterSel">
+        <option value="todas" ${filter==='todas'?'selected':''}>Todas</option>
+        <option value="pendente" ${filter==='pendente'?'selected':''}>Pendentes</option>
+        <option value="aceito" ${filter==='aceito'?'selected':''}>Aceitas</option>
+        <option value="recusado" ${filter==='recusado'?'selected':''}>Recusadas</option>
+        <option value="cancelado" ${filter==='cancelado'?'selected':''}>Canceladas</option>
+      </select>
+    </div>
+    ${all.length===0? `<div class="empty-state">Nenhuma troca ${filter==='todas'?'registrada':(filter==='aceito'?'aceita':filter==='recusado'?'recusada':filter==='cancelado'?'cancelada':'pendente')} neste mês.</div>` :
+      all.map(s=>reqRow(s, "none")).join("")}
+  `;
+
+  document.getElementById("reqModeSel").addEventListener("change", (e)=>{
+    state.reqMode = e.target.value;
+    renderTrocas(el);
+  });
+
+  /* ---- modo troca ---- */
+  const mySel = document.getElementById("mySel");
+  const colSel = document.getElementById("colSel");
+  const theirSel = document.getElementById("theirSel");
+  const submitBtn = document.getElementById("submitSwap");
+  const trocaWarning = document.getElementById("trocaWarning");
+
+  function refreshTheirOptions(){
+    if(!mySel) return;
+    const [fromDay, type] = mySel.value.split("|");
+    const colleague = colSel.value;
+    const theirDuties = curSchedule().filter(d=>d[type]===colleague).map(d=>d.day);
+    theirSel.innerHTML = theirDuties.length
+      ? theirDuties.map(day=>`<option value="${day}">Dia ${String(day).padStart(2,'0')} — ${SHIFT_LABEL[type]}${redSuffix(day)}</option>`).join("")
+      : `<option value="">Sem serviços deste tipo</option>`;
+    checkTrocaConflict();
+  }
+  function checkTrocaConflict(){
+    if(!mySel || !theirSel.value){ submitBtn.disabled = true; trocaWarning.style.display="none"; return; }
+    const [fromDay, type] = mySel.value.split("|");
+    const toDay = parseInt(theirSel.value, 10);
+    const toOp = colSel.value;
+    const sch = curSchedule();
+    const conflictA = operatorBusyOnDay(sch, toDay, state.operator);
+    const conflictB = operatorBusyOnDay(sch, parseInt(fromDay,10), toOp);
+    if(conflictA || conflictB){
+      trocaWarning.style.display = "block";
+      trocaWarning.textContent = conflictA
+        ? `Você já tem serviço no dia ${String(toDay).padStart(2,'0')} — não é possível assumir esse dia também.`
+        : `${toOp} já tem serviço no dia ${fromDay} — não é possível assumir esse dia também.`;
+      submitBtn.disabled = true;
+    } else {
+      trocaWarning.style.display = "none";
+      submitBtn.disabled = false;
+    }
+  }
+  if(mySel){
+    refreshTheirOptions();
+    mySel.addEventListener("change", refreshTheirOptions);
+    colSel.addEventListener("change", refreshTheirOptions);
+    theirSel.addEventListener("change", checkTrocaConflict);
+
+    submitBtn.addEventListener("click", async ()=>{
+      const [fromDay, type] = mySel.value.split("|");
+      const toOp = colSel.value;
+      const toDay = theirSel.value;
+      if(!toDay){ return; }
+      const note = document.getElementById("noteInput").value.trim();
+      const newSwap = {
+        id: "sw_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
+        mode: "troca",
+        fromOp: state.operator, toOp,
+        fromDay: parseInt(fromDay,10), toDay: parseInt(toDay,10),
+        type, note, status:"pendente", createdAt: Date.now()
+      };
+      const list = curSwaps().slice();
+      list.push(newSwap);
+      await saveSwaps(state.viewMonth, list);
+      showToast("Pedido enviado para " + toOp);
+      renderTrocas(el);
+    });
+  }
+
+  /* ---- modo assunção ---- */
+  const assTypeSel = document.getElementById("assTypeSel");
+  const assColSel = document.getElementById("assColSel");
+  const assDaySel = document.getElementById("assDaySel");
+  const assNoteInput = document.getElementById("assNoteInput");
+  const submitAssuncao = document.getElementById("submitAssuncao");
+  const assWarning = document.getElementById("assWarning");
+
+  function refreshAssDayOptions(){
+    const type = assTypeSel.value;
+    const colleague = assColSel.value;
+    const days = curSchedule().filter(d=>d[type]===colleague).map(d=>d.day);
+    assDaySel.innerHTML = days.length
+      ? days.map(day=>`<option value="${day}">Dia ${String(day).padStart(2,'0')} — ${SHIFT_LABEL[type]}${redSuffix(day)}</option>`).join("")
+      : `<option value="">${colleague} não tem serviços desse tipo</option>`;
+    checkAssuncaoConflict();
+  }
+  function checkAssuncaoConflict(){
+    const day = parseInt(assDaySel.value, 10);
+    const note = assNoteInput.value.trim();
+    if(!day){ submitAssuncao.disabled = true; assWarning.style.display="none"; return; }
+    const sch = curSchedule();
+    const conflict = operatorBusyOnDay(sch, day, state.operator);
+    if(conflict){
+      assWarning.style.display = "block";
+      assWarning.textContent = `Você já tem serviço no dia ${String(day).padStart(2,'0')} — não é possível assumir esse dia também.`;
+      submitAssuncao.disabled = true;
+    } else {
+      assWarning.style.display = "none";
+      submitAssuncao.disabled = note.length === 0;
+    }
+  }
+  if(assTypeSel){
+    refreshAssDayOptions();
+    assTypeSel.addEventListener("change", refreshAssDayOptions);
+    assColSel.addEventListener("change", refreshAssDayOptions);
+    assDaySel.addEventListener("change", checkAssuncaoConflict);
+    assNoteInput.addEventListener("input", checkAssuncaoConflict);
+
+    submitAssuncao.addEventListener("click", async ()=>{
+      const type = assTypeSel.value;
+      const holderOp = assColSel.value;
+      const day = parseInt(assDaySel.value, 10);
+      const note = assNoteInput.value.trim();
+      if(!day || !note) return;
+      const newSwap = {
+        id: "as_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
+        mode: "assuncao",
+        fromOp: state.operator, toOp: holderOp,
+        fromDay: day, toDay: null,
+        type, note, status:"pendente", createdAt: Date.now()
+      };
+      const list = curSwaps().slice();
+      list.push(newSwap);
+      await saveSwaps(state.viewMonth, list);
+      showToast("Pedido de assunção enviado para " + holderOp);
+      renderTrocas(el);
+    });
+  }
+
+  el.querySelectorAll("[data-accept]").forEach(b=>{
+    b.addEventListener("click", async ()=>{ await resolveSwap(b.dataset.accept, "aceito"); });
+  });
+  el.querySelectorAll("[data-decline]").forEach(b=>{
+    b.addEventListener("click", async ()=>{ await resolveSwap(b.dataset.decline, "recusado"); });
+  });
+  el.querySelectorAll("[data-cancel]").forEach(b=>{
+    b.addEventListener("click", async ()=>{ await resolveSwap(b.dataset.cancel, "cancelado"); });
+  });
+  document.getElementById("swapFilterSel").addEventListener("change", (e)=>{
+    state.swapFilter = e.target.value;
+    renderTrocas(el);
+  });
+}
+
+async function resolveSwap(id, decision){
+  const list = curSwaps().slice();
+  const idx = list.findIndex(s=>s.id===id);
+  if(idx === -1) return;
+  const s = list[idx];
+  if(decision === "aceito"){
+    const sch = curSchedule().map(d=>({...d}));
+    const isAssuncao = (s.mode||"troca") === "assuncao";
+    if(isAssuncao){
+      const row = sch.find(d=>d.day===s.fromDay);
+      if(!row || row[s.type] !== s.toOp){
+        showToast("Não foi possível efetivar: a escala mudou desde o pedido.");
+        return;
+      }
+      if(operatorBusyOnDay(sch, s.fromDay, s.fromOp)){
+        showToast(`Não é possível efetivar: ${s.fromOp} já tem serviço no dia ${String(s.fromDay).padStart(2,'0')}.`);
+        return;
+      }
+      row[s.type] = s.fromOp;
+      await saveSchedule(state.viewMonth, sch);
+    } else {
+      const fromRow = sch.find(d=>d.day===s.fromDay);
+      const toRow = sch.find(d=>d.day===s.toDay);
+      if(!fromRow || !toRow || fromRow[s.type]!==s.fromOp || toRow[s.type]!==s.toOp){
+        showToast("Não foi possível efetivar: a escala mudou desde o pedido.");
+        return;
+      }
+      if(operatorBusyOnDay(sch, s.toDay, s.fromOp) || operatorBusyOnDay(sch, s.fromDay, s.toOp)){
+        showToast("Não é possível efetivar: conflito de serviço no mesmo dia.");
+        return;
+      }
+      fromRow[s.type] = s.toOp;
+      toRow[s.type] = s.fromOp;
+      await saveSchedule(state.viewMonth, sch);
+    }
+  }
+  list[idx] = {...s, status:decision, resolvedAt:Date.now()};
+  await saveSwaps(state.viewMonth, list);
+  showToast(decision === "aceito" ? "Troca efetivada" : (decision === "cancelado" ? "Pedido cancelado" : "Pedido recusado"));
+  render();
+}
+
+/* ======================= RENDER: HISTÓRICO ======================= */
+function renderHistorico(el){
+  const m = state.histMonth && state.months.includes(state.histMonth) ? state.histMonth : state.months[state.months.length-1];
+  const sch = state.scheduleCache[m] || [];
+  const swaps = (state.swapsCache[m] || [])
+    .filter(s=>s.status==="aceito")
+    .slice()
+    .sort((a,b)=>(a.resolvedAt||0)-(b.resolvedAt||0));
+  const cancelled = (state.swapsCache[m] || [])
+    .filter(s=>s.status==="cancelado")
+    .slice()
+    .sort((a,b)=>(a.resolvedAt||0)-(b.resolvedAt||0));
+
+  const cancelledRows = cancelled.length===0 ? `<div class="empty-state">Nenhuma troca cancelada neste mês.</div>` :
+    cancelled.map(s=>{
+      const dt = s.resolvedAt ? new Date(s.resolvedAt).toLocaleDateString('pt-BR') : '';
+      const isAssuncao = (s.mode||"troca") === "assuncao";
+      const label = isAssuncao
+        ? `${s.fromOp} pediu para assumir de ${s.toOp} — dia ${String(s.fromDay).padStart(2,'0')} (${SHIFT_LABEL[s.type]})`
+        : `${s.fromOp} dia ${String(s.fromDay).padStart(2,'0')} ⇄ ${s.toOp} dia ${String(s.toDay).padStart(2,'0')} — ${SHIFT_LABEL[s.type]}`;
+      return `<div class="req-row swap-jump" data-from="${s.fromDay}" data-to="${s.toDay||''}">
+        <div class="req-top">
+          <span>${label}</span>
+          <span class="status-pill status-cancelled">CANCELADO</span>
+        </div>
+        ${dt? `<div class="req-note">Cancelada em ${dt}</div>` : ""}
+        <div class="jump-hint">toque para ver na escala ↓</div>
+      </div>`;
+    }).join("");
+
+  const dayRows = sch.map((d, idx)=>{
+    const red = isRedDay(m, d.day);
+    const prevDay = idx > 0 ? sch[idx-1] : null;
+    const outOp = prevDay ? prevDay.t24 : null;
+    return `<div class="day-row ${red?'red-day':''}" data-day="${d.day}">
+      <div class="day-col-date">
+        <div class="day-num mono">${String(d.day).padStart(2,'0')}</div>
+        <div class="day-wk mono ${red?'red':''}">${weekdayOf(m, d.day)}</div>
+      </div>
+      <div class="day-shifts-col">
+        <div class="t24-block empty" style="padding:5px 8px;">
+          <div class="t24-flow">
+            <span class="t24-tag">24H</span>
+            <span class="t24-op dash">${outOp || '—'}</span>
+            <span class="t24-arrow">→</span>
+            <span class="t24-op dash">${d.t24 || '—'}</span>
+          </div>
+        </div>
+        <div class="day-shifts">
+          <span class="shift-chip ${!d.t12?'empty':''}">12H ${d.t12?('<b>'+d.t12+'</b>'):'—'}</span>
+          <span class="shift-chip ${!d.sitfaa?'empty':''}">SITFAA ${d.sitfaa?('<b>'+d.sitfaa+'</b>'):'—'}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  const swapRows = swaps.length===0 ? `<div class="empty-state">Nenhuma troca efetivada neste mês.</div>` :
+    swaps.map(s=>{
+      const dt = s.resolvedAt ? new Date(s.resolvedAt).toLocaleDateString('pt-BR') : '';
+      const isAssuncao = (s.mode||"troca") === "assuncao";
+      const label = isAssuncao
+        ? `${s.fromOp} assumiu de ${s.toOp} — dia ${String(s.fromDay).padStart(2,'0')} (${SHIFT_LABEL[s.type]})`
+        : `${s.fromOp} dia ${String(s.fromDay).padStart(2,'0')} ⇄ ${s.toOp} dia ${String(s.toDay).padStart(2,'0')} — ${SHIFT_LABEL[s.type]}`;
+      return `<div class="req-row swap-jump" data-from="${s.fromDay}" data-to="${s.toDay||''}">
+        <div class="req-top">
+          <span>${label}</span>
+          <span class="status-pill status-accepted">ACEITO</span>
+        </div>
+        ${dt? `<div class="req-note">Efetivada em ${dt}</div>` : ""}
+        <div class="jump-hint">toque para ver na escala ↓</div>
+      </div>`;
+    }).join("");
+
+  el.innerHTML = `
+    <div class="month-select-wrap">
+      <label for="histMonthSel">Mês</label>
+      <select id="histMonthSel">
+        ${state.months.map(mo=>`<option value="${mo}" ${mo===m?'selected':''}>${monthLabel(mo)}</option>`).join("")}
+      </select>
+    </div>
+    <div class="banner">Consulte a escala já lançada de qualquer mês anterior e as trocas que foram efetivamente realizadas (aceitas) naquele mês. Pedidos pendentes ou recusados ficam na aba Trocas.</div>
+
+    <div class="section-title">Trocas efetivadas — ${monthLabel(m)}</div>
+    ${swapRows}
+
+    <div class="section-title">Trocas canceladas — ${monthLabel(m)}</div>
+    ${cancelledRows}
+
+    <div class="section-title">Escala do mês — ${monthLabel(m)}</div>
+    ${dayRows}
+  `;
+
+  document.getElementById("histMonthSel").addEventListener("change", async (e)=>{
+    await openHistorico(e.target.value);
+  });
+  el.querySelectorAll(".swap-jump").forEach(row=>{
+    row.addEventListener("click", ()=>{
+      el.querySelectorAll(".day-row.highlight").forEach(r=>r.classList.remove("highlight"));
+      const from = row.dataset.from;
+      const to = row.dataset.to;
+      [from, to].filter(v=>v).forEach(day=>{
+        const target = el.querySelector(`.day-row[data-day="${day}"]`);
+        if(target) target.classList.add("highlight");
+      });
+      const first = el.querySelector(`.day-row[data-day="${from}"]`);
+      if(first) first.scrollIntoView({behavior:"smooth", block:"center"});
+    });
+  });
+}
+
+async function openHistorico(monthKey){
+  await ensureMonthLoaded(monthKey);
+  state.histMonth = monthKey;
+  render();
+}
+
+/* ======================= RENDER: ESCALANTE ======================= */
+function renderEscalante(el){
+  if(!state.adminUnlocked){
+    el.innerHTML = `
+      <div class="lock-screen">
+        <h2 class="mono">Área do escalante</h2>
+        <p>Digite o código de acesso para montar a escala do próximo mês.</p>
+        <label for="adminCode">Código</label>
+        <input id="adminCode" type="password" placeholder="••••••••">
+        <button class="btn" id="adminSubmit">Entrar</button>
+      </div>`;
+    document.getElementById("adminSubmit").addEventListener("click", ()=>{
+      const val = document.getElementById("adminCode").value;
+      if(val === ADMIN_CODE){
+        state.adminUnlocked = true;
+        openEscalanteMonth(nextMonthKey(state.months[state.months.length-1]));
+      } else {
+        showToast("Código incorreto");
+      }
+    });
+    return;
+  }
+
+  const latest = state.months[state.months.length-1];
+  const upcoming = nextMonthKey(latest);
+  const hasUpcoming = state.months.includes(upcoming);
+  const options = state.months.map(m=>({key:m,label:monthLabel(m)+" — editar"}));
+  if(!hasUpcoming) options.push({key:upcoming, label:monthLabel(upcoming)+" — criar novo"});
+
+  const draftMonth = state.escalanteMonth || upcoming;
+  const draft = state.escalanteDraft || blankSchedule(draftMonth);
+
+  const dayRows = draft.map(d=>{
+    const red = isRedDay(draftMonth, d.day);
+    const optionsHtml = (field) => {
+      const cur = d[field];
+      return `<option value="">—</option>` + OPERATORS.map(o=>`<option value="${o}" ${cur===o?'selected':''}>${o}</option>`).join("");
+    };
+    return `<div class="builder-row ${red?'red-day':''}">
+      <div class="builder-top">Dia ${String(d.day).padStart(2,'0')} <span class="wk ${red?'red':''}">${weekdayOf(draftMonth, d.day)}</span></div>
+      <div class="builder-grid">
+        <div><label>24H</label><select data-day="${d.day}" data-field="t24">${optionsHtml('t24')}</select></div>
+        <div><label>12H</label><select data-day="${d.day}" data-field="t12">${optionsHtml('t12')}</select></div>
+        <div><label>SITFAA</label><select data-day="${d.day}" data-field="sitfaa">${optionsHtml('sitfaa')}</select></div>
+      </div>
+    </div>`;
+  }).join("");
+
+  el.innerHTML = `
+    <div class="banner">Monte ou edite a escala de um mês. As trocas continuam funcionando normalmente depois que a escala é salva. Sábados, domingos e quartas-feiras aparecem marcados como escala vermelha.</div>
+
+    <div class="card">
+      <h3>Importar do Google Sheets</h3>
+      <label for="sheetsImportUrl">Link publicado como CSV da planilha do mês</label>
+      <input id="sheetsImportUrl" type="text" placeholder="https://docs.google.com/.../pub?output=csv">
+      <p style="font-size:11px;color:var(--muted);margin:8px 0 0;">No Sheets: Arquivo → Compartilhar → Publicar na web → formato CSV. A planilha deve ter colunas na ordem DIA, SITFAA, 12H, 24H.</p>
+      <button class="btn secondary" id="importSheetsBtn">Importar para o rascunho abaixo</button>
+    </div>
+
+    <div class="month-select-wrap">
+      <label>Mês em edição</label>
+      <select id="escalanteMonthSel">
+        ${options.map(o=>`<option value="${o.key}" ${o.key===draftMonth?'selected':''}>${o.label}</option>`).join("")}
+      </select>
+    </div>
+    <div class="section-title">Dias — ${monthLabel(draftMonth)}</div>
+    ${dayRows}
+    <button class="btn" id="saveEscalante">Salvar escala de ${monthLabel(draftMonth)}</button>
+
+    <div class="card" style="margin-top:20px;">
+      <h3>Virada de mês — reenviar ao Sheets</h3>
+      <label for="sheetsWebhookUrl">URL do Apps Script (Web App) — configure uma vez</label>
+      <input id="sheetsWebhookUrl" type="text" placeholder="https://script.google.com/macros/s/AAAA/exec" value="${state.sheetsWebhook||''}">
+      <button class="btn secondary" id="saveWebhookBtn">Salvar URL</button>
+      <label for="turnoverMonthSel" style="margin-top:14px;">Mês a encerrar e reenviar</label>
+      <select id="turnoverMonthSel">
+        ${state.months.map(m=>`<option value="${m}" ${m===state.months[state.months.length-1]?'selected':''}>${monthLabel(m)}</option>`).join("")}
+      </select>
+      <p style="font-size:11px;color:var(--muted);margin:8px 0 0;">Reenvia a escala final desse mês (já com todas as trocas aplicadas) para o Sheets, no mesmo formato de entrada.</p>
+      <button class="btn" id="turnoverBtn">Confirmar virada do mês e reenviar</button>
+    </div>
+
+    <button class="btn secondary" id="lockEscalante" style="margin-top:14px;">Sair da área do escalante</button>
+  `;
+
+  document.getElementById("importSheetsBtn").addEventListener("click", async ()=>{
+    const url = document.getElementById("sheetsImportUrl").value.trim();
+    if(!url) return;
+    try{
+      const res = await fetch(url);
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      const text = await res.text();
+      state.escalanteDraft = parseScheduleCsv(text, draftMonth);
+      showToast("Escala importada — revise e toque em Salvar");
+      renderEscalante(el);
+    }catch(err){
+      showToast("Falha ao importar: confira se o link foi publicado como CSV");
+    }
+  });
+  document.getElementById("saveWebhookBtn").addEventListener("click", async ()=>{
+    const url = document.getElementById("sheetsWebhookUrl").value.trim();
+    state.sheetsWebhook = url;
+    try{ await kvSet("config:sheetsWebhook", url); showToast("URL salva"); }
+    catch(e){ showToast("Erro ao salvar a URL"); }
+  });
+  document.getElementById("turnoverBtn").addEventListener("click", async ()=>{
+    const webhook = state.sheetsWebhook;
+    if(!webhook){ showToast("Configure a URL do Apps Script primeiro"); return; }
+    const monthToClose = document.getElementById("turnoverMonthSel").value;
+    await ensureMonthLoaded(monthToClose);
+    const csv = buildScheduleCsv(state.scheduleCache[monthToClose]);
+    const swapsDone = (state.swapsCache[monthToClose]||[]).filter(s=>s.status==="aceito");
+    try{
+      await fetch(webhook, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ month: monthToClose, csv, swaps: swapsDone })
+      });
+      showToast("Escala de " + monthLabel(monthToClose) + " reenviada ao Sheets");
+    }catch(err){
+      showToast("Falha ao reenviar — confira a URL do Apps Script");
+    }
+  });
+
+  document.getElementById("escalanteMonthSel").addEventListener("change", async (e)=>{
+    await openEscalanteMonth(e.target.value);
+  });
+  document.getElementById("saveEscalante").addEventListener("click", async ()=>{
+    const list = state.months.includes(draftMonth) ? state.months : [...state.months, draftMonth].sort();
+    await saveSchedule(draftMonth, state.escalanteDraft);
+    await saveOriginalSchedule(draftMonth, JSON.parse(JSON.stringify(state.escalanteDraft)));
+    if(!state.swapsCache[draftMonth]) { state.swapsCache[draftMonth] = []; await saveSwaps(draftMonth, []); }
+    await saveMonthsList(list);
+    state.viewMonth = draftMonth;
+    state.tab = "escala";
+    showToast("Escala de " + monthLabel(draftMonth) + " salva e liberada");
+    render();
+  });
+  document.getElementById("lockEscalante").addEventListener("click", ()=>{
+    state.adminUnlocked = false;
+    state.escalanteMonth = null;
+    state.escalanteDraft = null;
+    render();
+  });
+  el.querySelectorAll("select[data-day]").forEach(sel=>{
+    sel.addEventListener("change", ()=>{
+      const day = parseInt(sel.dataset.day,10);
+      const field = sel.dataset.field;
+      const row = state.escalanteDraft.find(d=>d.day===day);
+      row[field] = sel.value || null;
+    });
+  });
+}
+
+async function openEscalanteMonth(monthKey){
+  await ensureMonthLoaded(monthKey);
+  state.escalanteMonth = monthKey;
+  state.escalanteDraft = JSON.parse(JSON.stringify(state.scheduleCache[monthKey]));
+  render();
+}
+
+/* ======================= INIT ======================= */
+(async function init(){
+  // PWA: injeta ícone real (base64 do brasão) e um manifest gerado em memória, sem precisar de arquivos externos
+  document.querySelectorAll('link[rel="apple-touch-icon"], link[rel="icon"]').forEach(l=>{ l.href = LOGO_B64; });
+  const manifest = {
+    name: "Escala 2SC3 — Sobrevoo",
+    short_name: "Escala 2SC3",
+    start_url: ".",
+    display: "standalone",
+    background_color: "#0A1930",
+    theme_color: "#0A1930",
+    icons: [{ src: LOGO_B64, sizes: "192x192", type: "image/jpeg" }]
+  };
+  const manifestBlob = new Blob([JSON.stringify(manifest)], {type: "application/manifest+json"});
+  document.getElementById("pwaManifest").href = URL.createObjectURL(manifestBlob);
+
+  state.months = await loadMonthsList();
+  state.viewMonth = state.months[state.months.length-1];
+  await ensureMonthLoaded(state.viewMonth);
+  try{ state.sheetsWebhook = await kvGet("config:sheetsWebhook"); }catch(e){ state.sheetsWebhook = null; }
+  state.screen = "select";
+  render();
+})();
+</script>
+</body>
+</html>
