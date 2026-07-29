@@ -187,6 +187,7 @@
   .status-pending{background:#3A2F0E;color:var(--amber);}
   .status-accepted{background:#0F3323;color:var(--green);}
   .status-declined{background:#3A1414;color:var(--red);}
+  .status-cancelled{background:#22293A;color:var(--muted);}
   .req-actions{display:flex;gap:8px;margin-top:10px;}
   .req-actions .btn{margin-top:0;}
   .empty-state{text-align:center;color:var(--muted);font-size:12.5px;padding:24px 10px;border:1px dashed var(--border);border-radius:var(--radius);}
@@ -652,23 +653,31 @@ function renderTrocas(el){
     .filter(s => filter==="todas" ? true : s.status===filter);
   const reqMode = state.reqMode || "troca";
 
-  function reqRow(s, actionable){
-    const pill = s.status==="pendente"?"status-pending":(s.status==="aceito"?"status-accepted":"status-declined");
-    const pillText = s.status==="pendente"?"PENDENTE":(s.status==="aceito"?"ACEITO":"RECUSADO");
+  function reqRow(s, mode){
+    const pillMap = {pendente:["status-pending","PENDENTE"], aceito:["status-accepted","ACEITO"], recusado:["status-declined","RECUSADO"], cancelado:["status-cancelled","CANCELADO"]};
+    const [pill, pillText] = pillMap[s.status] || ["status-declined", s.status.toUpperCase()];
     const isAssuncao = (s.mode||"troca") === "assuncao";
     const mainLine = isAssuncao
       ? `${s.fromOp} assume de ${s.toOp} — dia ${dayColored(s.fromDay)} (${SHIFT_LABEL[s.type]})`
       : `${s.fromOp} dia ${dayColored(s.fromDay)} (${SHIFT_LABEL[s.type]}) ⇄ ${s.toOp} dia ${dayColored(s.toDay)}`;
+    let actions = "";
+    if(mode === "respond"){
+      actions = `<div class="req-actions">
+        <button class="btn" data-accept="${s.id}">Aceitar</button>
+        <button class="btn decline" data-decline="${s.id}">Recusar</button>
+      </div>`;
+    } else if(mode === "cancel"){
+      actions = `<div class="req-actions">
+        <button class="btn decline" data-cancel="${s.id}">Cancelar pedido</button>
+      </div>`;
+    }
     return `<div class="req-row" data-id="${s.id}">
       <div class="req-top">
         <span>${isAssuncao?'<span class="mode-tag">ASSUNÇÃO</span> ':''}${mainLine}</span>
         <span class="status-pill ${pill}">${pillText}</span>
       </div>
       ${s.note? `<div class="req-note">"${escapeHtml(s.note)}"</div>` : ""}
-      ${actionable? `<div class="req-actions">
-        <button class="btn" data-accept="${s.id}">Aceitar</button>
-        <button class="btn decline" data-decline="${s.id}">Recusar</button>
-      </div>` : ""}
+      ${actions}
     </div>`;
   }
 
@@ -733,15 +742,15 @@ function renderTrocas(el){
 
     <div class="section-title">Pedidos recebidos</div>
     ${incoming.length===0? `<div class="empty-state">Nenhum pedido pendente para você.</div>` :
-      incoming.map(s=>reqRow(s, true)).join("")}
+      incoming.map(s=>reqRow(s, "respond")).join("")}
 
     <div class="section-title">Meus pedidos enviados</div>
     ${outgoing.filter(s=>s.status==="pendente").length===0? `<div class="empty-state">Você não tem pedidos pendentes.</div>` :
-      outgoing.filter(s=>s.status==="pendente").map(s=>reqRow(s, false)).join("")}
+      outgoing.filter(s=>s.status==="pendente").map(s=>reqRow(s, "cancel")).join("")}
 
     <div class="section-title">Meu histórico</div>
     ${history.length===0? `<div class="empty-state">Nenhuma troca sua concluída ainda.</div>` :
-      history.map(s=>reqRow(s, false)).join("")}
+      history.map(s=>reqRow(s, "none")).join("")}
 
     <div class="section-title">Trocas de todos os operadores</div>
     <div class="month-select-wrap">
@@ -751,10 +760,11 @@ function renderTrocas(el){
         <option value="pendente" ${filter==='pendente'?'selected':''}>Pendentes</option>
         <option value="aceito" ${filter==='aceito'?'selected':''}>Aceitas</option>
         <option value="recusado" ${filter==='recusado'?'selected':''}>Recusadas</option>
+        <option value="cancelado" ${filter==='cancelado'?'selected':''}>Canceladas</option>
       </select>
     </div>
-    ${all.length===0? `<div class="empty-state">Nenhuma troca ${filter==='todas'?'registrada':(filter==='aceito'?'aceita':filter==='recusado'?'recusada':'pendente')} neste mês.</div>` :
-      all.map(s=>reqRow(s, false)).join("")}
+    ${all.length===0? `<div class="empty-state">Nenhuma troca ${filter==='todas'?'registrada':(filter==='aceito'?'aceita':filter==='recusado'?'recusada':filter==='cancelado'?'cancelada':'pendente')} neste mês.</div>` :
+      all.map(s=>reqRow(s, "none")).join("")}
   `;
 
   document.getElementById("reqModeSel").addEventListener("change", (e)=>{
@@ -891,6 +901,9 @@ function renderTrocas(el){
   el.querySelectorAll("[data-decline]").forEach(b=>{
     b.addEventListener("click", async ()=>{ await resolveSwap(b.dataset.decline, "recusado"); });
   });
+  el.querySelectorAll("[data-cancel]").forEach(b=>{
+    b.addEventListener("click", async ()=>{ await resolveSwap(b.dataset.cancel, "cancelado"); });
+  });
   document.getElementById("swapFilterSel").addEventListener("change", (e)=>{
     state.swapFilter = e.target.value;
     renderTrocas(el);
@@ -935,7 +948,7 @@ async function resolveSwap(id, decision){
   }
   list[idx] = {...s, status:decision, resolvedAt:Date.now()};
   await saveSwaps(state.viewMonth, list);
-  showToast(decision === "aceito" ? "Troca efetivada" : "Pedido recusado");
+  showToast(decision === "aceito" ? "Troca efetivada" : (decision === "cancelado" ? "Pedido cancelado" : "Pedido recusado"));
   render();
 }
 
@@ -947,6 +960,27 @@ function renderHistorico(el){
     .filter(s=>s.status==="aceito")
     .slice()
     .sort((a,b)=>(a.resolvedAt||0)-(b.resolvedAt||0));
+  const cancelled = (state.swapsCache[m] || [])
+    .filter(s=>s.status==="cancelado")
+    .slice()
+    .sort((a,b)=>(a.resolvedAt||0)-(b.resolvedAt||0));
+
+  const cancelledRows = cancelled.length===0 ? `<div class="empty-state">Nenhuma troca cancelada neste mês.</div>` :
+    cancelled.map(s=>{
+      const dt = s.resolvedAt ? new Date(s.resolvedAt).toLocaleDateString('pt-BR') : '';
+      const isAssuncao = (s.mode||"troca") === "assuncao";
+      const label = isAssuncao
+        ? `${s.fromOp} pediu para assumir de ${s.toOp} — dia ${String(s.fromDay).padStart(2,'0')} (${SHIFT_LABEL[s.type]})`
+        : `${s.fromOp} dia ${String(s.fromDay).padStart(2,'0')} ⇄ ${s.toOp} dia ${String(s.toDay).padStart(2,'0')} — ${SHIFT_LABEL[s.type]}`;
+      return `<div class="req-row swap-jump" data-from="${s.fromDay}" data-to="${s.toDay||''}">
+        <div class="req-top">
+          <span>${label}</span>
+          <span class="status-pill status-cancelled">CANCELADO</span>
+        </div>
+        ${dt? `<div class="req-note">Cancelada em ${dt}</div>` : ""}
+        <div class="jump-hint">toque para ver na escala ↓</div>
+      </div>`;
+    }).join("");
 
   const dayRows = sch.map((d, idx)=>{
     const red = isRedDay(m, d.day);
@@ -1002,6 +1036,9 @@ function renderHistorico(el){
 
     <div class="section-title">Trocas efetivadas — ${monthLabel(m)}</div>
     ${swapRows}
+
+    <div class="section-title">Trocas canceladas — ${monthLabel(m)}</div>
+    ${cancelledRows}
 
     <div class="section-title">Escala do mês — ${monthLabel(m)}</div>
     ${dayRows}
