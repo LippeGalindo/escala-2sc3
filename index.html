@@ -138,10 +138,24 @@
   /* ---------- Horas ---------- */
   .hours-hero{
     background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
-    padding:22px 18px;text-align:center;margin-bottom:14px;
+    padding:20px 14px;text-align:center;margin-bottom:14px;
   }
-  .hours-big{font-family:'IBM Plex Mono',monospace;font-size:44px;font-weight:700;color:var(--amber);line-height:1;}
-  .hours-label{font-size:12px;color:var(--muted);margin-top:6px;}
+  .hours-dual{display:flex;align-items:center;justify-content:center;gap:16px;}
+  .hours-col{text-align:center;}
+  .hours-arrow{color:var(--muted);font-size:18px;flex-shrink:0;}
+  .hours-big{font-family:'IBM Plex Mono',monospace;font-size:34px;font-weight:700;color:var(--amber);line-height:1;}
+  .hours-label{font-size:11px;color:var(--muted);margin-top:6px;}
+  .day-row.highlight{
+    outline:2px solid var(--teal);
+    animation:histPulse 1.4s ease-in-out 2;
+  }
+  @keyframes histPulse{
+    0%,100%{background:var(--panel);}
+    50%{background:#1E3A1C;}
+  }
+  .swap-jump{cursor:pointer;}
+  .swap-jump:active{opacity:.75;}
+  .jump-hint{font-size:9.5px;color:var(--muted);margin-top:5px;}
   .breakdown{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px;}
   .bd-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:12px 8px;text-align:center;}
   .bd-num{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;}
@@ -167,6 +181,8 @@
   .req-row{border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--panel-2);}
   .req-top{display:flex;justify-content:space-between;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:12.5px;gap:8px;}
   .req-note{font-size:12px;color:var(--muted);margin-top:6px;}
+  .mode-tag{font-size:9px;background:var(--teal);color:#08170a;padding:2px 6px;border-radius:5px;font-weight:700;letter-spacing:.03em;margin-right:4px;}
+  .field-warning{font-size:11.5px;color:var(--red);background:#2A1414;border:1px solid var(--red);border-radius:8px;padding:8px 10px;margin-top:8px;line-height:1.4;}
   .status-pill{font-size:10px;padding:3px 8px;border-radius:20px;font-family:'IBM Plex Mono',monospace;letter-spacing:.03em;flex-shrink:0;}
   .status-pending{background:#3A2F0E;color:var(--amber);}
   .status-accepted{background:#0F3323;color:var(--green);}
@@ -264,11 +280,14 @@ let state = {
   viewMonth: null,
   scheduleCache: {},
   swapsCache: {},
+  originalCache: {},
+  sheetsWebhook: null,
   adminUnlocked: false,
   escalanteMonth: null,
   escalanteDraft: null,
   swapFilter: "todas",
   histMonth: null,
+  reqMode: "troca",
 };
 
 /* ======================= DATE HELPERS ======================= */
@@ -279,6 +298,36 @@ function weekdayOf(monthKey, day){ return WEEKDAYS[weekdayIdx(monthKey, day)]; }
 function isRedDay(monthKey, day){ const wd = weekdayIdx(monthKey, day); return wd===0 || wd===6 || wd===3; }
 function nextMonthKey(monthKey){ let [y,m]=monthKey.split("-").map(Number); m+=1; if(m>12){m=1;y+=1;} return y+"-"+String(m).padStart(2,"0"); }
 function blankSchedule(monthKey){ const n=daysInMonth(monthKey); const arr=[]; for(let d=1; d<=n; d++) arr.push({day:d, sitfaa:null, t12:null, t24:null}); return arr; }
+
+// ---- Integração Google Sheets (formato: DIA,SITFAA,12H,24H) ----
+function normCell(v){
+  if(v===undefined || v===null) return null;
+  const t = String(v).trim().toUpperCase();
+  return (t==="" || t==="-" || t==="—" || t==="---") ? null : t;
+}
+function parseScheduleCsv(text, monthKey){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0);
+  if(lines.length===0) throw new Error("planilha vazia");
+  const startIdx = /dia/i.test(lines[0]) ? 1 : 0; // pula cabeçalho se existir
+  const byDay = {};
+  for(let i=startIdx; i<lines.length; i++){
+    const cols = lines[i].split(",").map(c=>c.trim());
+    const day = parseInt(cols[0], 10);
+    if(!day) continue;
+    byDay[day] = { day, sitfaa: normCell(cols[1]), t12: normCell(cols[2]), t24: normCell(cols[3]) };
+  }
+  const n = daysInMonth(monthKey);
+  const out = [];
+  for(let d=1; d<=n; d++){
+    out.push(byDay[d] || {day:d, sitfaa:null, t12:null, t24:null});
+  }
+  return out;
+}
+function buildScheduleCsv(sch){
+  const lines = ["DIA,SITFAA,12H,24H"];
+  sch.forEach(d=>lines.push(`${d.day},${d.sitfaa||""},${d.t12||""},${d.t24||""}`));
+  return lines.join("\n");
+}
 
 /* ======================= STORAGE HELPERS (Supabase) ======================= */
 async function kvGet(key){
@@ -337,9 +386,25 @@ async function saveSwaps(monthKey, list){
   state.swapsCache[monthKey] = list;
   try{ await kvSet("swaps:"+monthKey, list); }catch(e){ console.error("erro ao salvar trocas", e); }
 }
+async function loadOriginalSchedule(monthKey){
+  try{
+    return await kvGet("schedule_orig:"+monthKey);
+  }catch(e){
+    // fallback para meses criados antes desse recurso: usa a escala atual como linha de base
+    const cur = state.scheduleCache[monthKey] || await loadSchedule(monthKey);
+    const clone = JSON.parse(JSON.stringify(cur));
+    try{ await kvSet("schedule_orig:"+monthKey, clone); }catch(e2){}
+    return clone;
+  }
+}
+async function saveOriginalSchedule(monthKey, sch){
+  state.originalCache[monthKey] = sch;
+  try{ await kvSet("schedule_orig:"+monthKey, sch); }catch(e){ console.error("erro ao salvar escala original", e); }
+}
 async function ensureMonthLoaded(monthKey){
   if(!state.scheduleCache[monthKey]) state.scheduleCache[monthKey] = await loadSchedule(monthKey);
   if(!state.swapsCache[monthKey]) state.swapsCache[monthKey] = await loadSwaps(monthKey);
+  if(!state.originalCache[monthKey]) state.originalCache[monthKey] = await loadOriginalSchedule(monthKey);
 }
 function curSchedule(){ return state.scheduleCache[state.viewMonth]; }
 function curSwaps(){ return state.swapsCache[state.viewMonth]; }
@@ -360,9 +425,15 @@ function myDuties(op){
   }
   return out;
 }
-function computeHours(){
+// true se `op` já tem QUALQUER serviço lançado no dia `day` daquele mês (em qualquer um dos 3 turnos)
+function operatorBusyOnDay(sch, day, op){
+  const row = sch.find(d=>d.day===day);
+  if(!row || !op) return false;
+  return ["t24","t12","sitfaa"].some(t=>row[t]===op);
+}
+function computeHoursFor(sch){
   const totals = {}; OPERATORS.forEach(o=>totals[o]={t24:0,t12:0,sitfaa:0,total:0,svc:0});
-  for(const d of curSchedule()){
+  for(const d of sch){
     for(const type of ["t24","t12","sitfaa"]){
       const op = d[type];
       if(op && totals[op]){
@@ -373,6 +444,13 @@ function computeHours(){
     }
   }
   return totals;
+}
+function computeHours(){ return computeHoursFor(curSchedule()); }
+// marcador textual (para <option>, que não aceita cor) e em HTML colorido (para texto normal)
+function redSuffix(day){ return isRedDay(state.viewMonth, day) ? " 🔴" : ""; }
+function dayColored(day){
+  const p = String(day).padStart(2,'0');
+  return isRedDay(state.viewMonth, day) ? `<span style="color:var(--red);font-weight:700;">${p}</span>` : p;
 }
 function escapeHtml(str){
   const d = document.createElement("div"); d.textContent = str; return d.innerHTML;
@@ -523,26 +601,40 @@ function renderEscala(el){
 
 /* ======================= RENDER: HORAS ======================= */
 function renderHoras(el){
-  const totals = computeHours();
-  const me = totals[state.operator];
-  const ranking = OPERATORS.slice().sort((a,b)=>totals[b].total-totals[a].total);
+  const curTotals = computeHoursFor(curSchedule());
+  const origSch = state.originalCache[state.viewMonth] || curSchedule();
+  const origTotals = computeHoursFor(origSch);
+  const meCur = curTotals[state.operator];
+  const meOrig = origTotals[state.operator];
+  const changed = meCur.total !== meOrig.total;
+  const ranking = OPERATORS.slice().sort((a,b)=>curTotals[b].total-curTotals[a].total);
 
   el.innerHTML = `
     <div class="month-hint mono">${monthLabel(state.viewMonth)}</div>
     <div class="hours-hero">
-      <div class="hours-big mono">${me.total}h</div>
-      <div class="hours-label">total previsto — ${me.svc} serviço${me.svc===1?'':'s'}</div>
+      <div class="hours-dual">
+        <div class="hours-col">
+          <div class="hours-big mono" style="font-size:30px;">${meOrig.total}h</div>
+          <div class="hours-label">escala original</div>
+        </div>
+        <div class="hours-arrow">→</div>
+        <div class="hours-col">
+          <div class="hours-big mono" style="color:${changed?'var(--green)':'var(--amber)'}">${meCur.total}h</div>
+          <div class="hours-label">atual (com trocas)</div>
+        </div>
+      </div>
+      <div class="hours-label" style="margin-top:8px;">${meCur.svc} serviço${meCur.svc===1?'':'s'} na escala atual</div>
     </div>
     <div class="breakdown">
-      <div class="bd-card"><div class="bd-num mono">${me.t24}</div><div class="bd-label">turnos 24H</div></div>
-      <div class="bd-card"><div class="bd-num mono">${me.t12}</div><div class="bd-label">turnos 12H</div></div>
-      <div class="bd-card"><div class="bd-num mono">${me.sitfaa}</div><div class="bd-label">SITFAA</div></div>
+      <div class="bd-card"><div class="bd-num mono">${meCur.t24}</div><div class="bd-label">turnos 24H</div></div>
+      <div class="bd-card"><div class="bd-num mono">${meCur.t12}</div><div class="bd-label">turnos 12H</div></div>
+      <div class="bd-card"><div class="bd-num mono">${meCur.sitfaa}</div><div class="bd-label">SITFAA</div></div>
     </div>
-    <div class="section-title">Comparativo entre operadores</div>
+    <div class="section-title">Comparativo entre operadores (original → atual)</div>
     ${ranking.map(o=>`
       <div class="rank-row ${o===state.operator?'me':''}">
         <span>${o}</span>
-        <span class="h">${totals[o].svc} svc · <b style="color:var(--text)">${totals[o].total}h</b></span>
+        <span class="h">${origTotals[o].total}h → <b style="color:${origTotals[o].total!==curTotals[o].total?'var(--green)':'var(--text)'}">${curTotals[o].total}h</b></span>
       </div>
     `).join("")}
   `;
@@ -558,13 +650,18 @@ function renderTrocas(el){
   const filter = state.swapFilter || "todas";
   const all = swaps.slice().sort((a,b)=>b.createdAt-a.createdAt)
     .filter(s => filter==="todas" ? true : s.status===filter);
+  const reqMode = state.reqMode || "troca";
 
   function reqRow(s, actionable){
     const pill = s.status==="pendente"?"status-pending":(s.status==="aceito"?"status-accepted":"status-declined");
     const pillText = s.status==="pendente"?"PENDENTE":(s.status==="aceito"?"ACEITO":"RECUSADO");
+    const isAssuncao = (s.mode||"troca") === "assuncao";
+    const mainLine = isAssuncao
+      ? `${s.fromOp} assume de ${s.toOp} — dia ${dayColored(s.fromDay)} (${SHIFT_LABEL[s.type]})`
+      : `${s.fromOp} dia ${dayColored(s.fromDay)} (${SHIFT_LABEL[s.type]}) ⇄ ${s.toOp} dia ${dayColored(s.toDay)}`;
     return `<div class="req-row" data-id="${s.id}">
       <div class="req-top">
-        <span>${s.fromOp} dia ${String(s.fromDay).padStart(2,'0')} (${SHIFT_LABEL[s.type]}) ⇄ ${s.toOp} dia ${String(s.toDay).padStart(2,'0')}</span>
+        <span>${isAssuncao?'<span class="mode-tag">ASSUNÇÃO</span> ':''}${mainLine}</span>
         <span class="status-pill ${pill}">${pillText}</span>
       </div>
       ${s.note? `<div class="req-note">"${escapeHtml(s.note)}"</div>` : ""}
@@ -577,29 +674,61 @@ function renderTrocas(el){
 
   el.innerHTML = `
     <div class="month-hint mono">${monthLabel(state.viewMonth)}</div>
-    <div class="banner">Uma troca só é efetivada depois que o colega aceita o pedido pelo app. Trocas acontecem sempre entre turnos do mesmo tipo (24H↔24H, 12H↔12H, SITFAA↔SITFAA).</div>
+    <div class="banner">Uma troca só é efetivada depois que o colega aceita o pedido pelo app. Trocas acontecem sempre entre turnos do mesmo tipo (24H↔24H, 12H↔12H, SITFAA↔SITFAA), e não é possível trocar para um dia em que o operador já tenha outro serviço lançado. Dias marcados com 🔴 são escala vermelha (sábado, domingo ou quarta-feira).</div>
 
     <div class="card">
-      <h3>Solicitar troca</h3>
-      ${my.length===0? `<div class="empty-state">Você não tem serviços neste mês.</div>` : `
-      <label for="mySel">Seu serviço</label>
-      <select id="mySel">
-        ${my.map(d=>`<option value="${d.day}|${d.type}">Dia ${String(d.day).padStart(2,'0')} — ${SHIFT_LABEL[d.type]}</option>`).join("")}
+      <h3>Solicitar</h3>
+      <label for="reqModeSel">Tipo de pedido</label>
+      <select id="reqModeSel">
+        <option value="troca" ${reqMode==='troca'?'selected':''}>Troca (imediata, mesmo tipo de turno)</option>
+        <option value="assuncao" ${reqMode==='assuncao'?'selected':''}>Assumir serviço (colega paga depois)</option>
       </select>
 
-      <label for="colSel">Trocar com</label>
-      <select id="colSel">
-        ${OPERATORS.filter(o=>o!==state.operator).map(o=>`<option value="${o}">${o}</option>`).join("")}
-      </select>
+      <div id="modeTroca" style="display:${reqMode==='troca'?'block':'none'}">
+        ${my.length===0? `<div class="empty-state">Você não tem serviços neste mês.</div>` : `
+        <label for="mySel">Seu serviço</label>
+        <select id="mySel">
+          ${my.map(d=>`<option value="${d.day}|${d.type}">Dia ${String(d.day).padStart(2,'0')} — ${SHIFT_LABEL[d.type]}${redSuffix(d.day)}</option>`).join("")}
+        </select>
 
-      <label for="theirSel">Serviço do colega</label>
-      <select id="theirSel"><option>—</option></select>
+        <label for="colSel">Trocar com</label>
+        <select id="colSel">
+          ${OPERATORS.filter(o=>o!==state.operator).map(o=>`<option value="${o}">${o}</option>`).join("")}
+        </select>
 
-      <label for="noteInput">Mensagem (opcional)</label>
-      <input id="noteInput" type="text" placeholder="ex: preciso trocar por compromisso pessoal">
+        <label for="theirSel">Serviço do colega</label>
+        <select id="theirSel"><option>—</option></select>
+        <div class="field-warning" id="trocaWarning" style="display:none"></div>
 
-      <button class="btn" id="submitSwap" disabled>Enviar pedido de troca</button>
-      `}
+        <label for="noteInput">Mensagem (opcional)</label>
+        <input id="noteInput" type="text" placeholder="ex: preciso trocar por compromisso pessoal">
+
+        <button class="btn" id="submitSwap" disabled>Enviar pedido de troca</button>
+        `}
+      </div>
+
+      <div id="modeAssuncao" style="display:${reqMode==='assuncao'?'block':'none'}">
+        <label for="assTypeSel">Tipo de turno a assumir</label>
+        <select id="assTypeSel">
+          <option value="t24">${SHIFT_LABEL.t24}</option>
+          <option value="t12">${SHIFT_LABEL.t12}</option>
+          <option value="sitfaa">${SHIFT_LABEL.sitfaa}</option>
+        </select>
+
+        <label for="assColSel">De qual colega</label>
+        <select id="assColSel">
+          ${OPERATORS.filter(o=>o!==state.operator).map(o=>`<option value="${o}">${o}</option>`).join("")}
+        </select>
+
+        <label for="assDaySel">Dia do colega a assumir</label>
+        <select id="assDaySel"><option>—</option></select>
+        <div class="field-warning" id="assWarning" style="display:none"></div>
+
+        <label for="assNoteInput">Observação (obrigatório) — explique como/quando será pago</label>
+        <input id="assNoteInput" type="text" placeholder="ex: MAQ pega serviço meu depois, ainda sem data definida">
+
+        <button class="btn" id="submitAssuncao" disabled>Enviar pedido de assunção</button>
+      </div>
     </div>
 
     <div class="section-title">Pedidos recebidos</div>
@@ -628,25 +757,52 @@ function renderTrocas(el){
       all.map(s=>reqRow(s, false)).join("")}
   `;
 
+  document.getElementById("reqModeSel").addEventListener("change", (e)=>{
+    state.reqMode = e.target.value;
+    renderTrocas(el);
+  });
+
+  /* ---- modo troca ---- */
   const mySel = document.getElementById("mySel");
   const colSel = document.getElementById("colSel");
   const theirSel = document.getElementById("theirSel");
   const submitBtn = document.getElementById("submitSwap");
+  const trocaWarning = document.getElementById("trocaWarning");
 
   function refreshTheirOptions(){
     if(!mySel) return;
-    const [, type] = mySel.value.split("|");
+    const [fromDay, type] = mySel.value.split("|");
     const colleague = colSel.value;
     const theirDuties = curSchedule().filter(d=>d[type]===colleague).map(d=>d.day);
     theirSel.innerHTML = theirDuties.length
-      ? theirDuties.map(day=>`<option value="${day}">Dia ${String(day).padStart(2,'0')} — ${SHIFT_LABEL[type]}</option>`).join("")
+      ? theirDuties.map(day=>`<option value="${day}">Dia ${String(day).padStart(2,'0')} — ${SHIFT_LABEL[type]}${redSuffix(day)}</option>`).join("")
       : `<option value="">Sem serviços deste tipo</option>`;
-    submitBtn.disabled = theirDuties.length === 0;
+    checkTrocaConflict();
+  }
+  function checkTrocaConflict(){
+    if(!mySel || !theirSel.value){ submitBtn.disabled = true; trocaWarning.style.display="none"; return; }
+    const [fromDay, type] = mySel.value.split("|");
+    const toDay = parseInt(theirSel.value, 10);
+    const toOp = colSel.value;
+    const sch = curSchedule();
+    const conflictA = operatorBusyOnDay(sch, toDay, state.operator);
+    const conflictB = operatorBusyOnDay(sch, parseInt(fromDay,10), toOp);
+    if(conflictA || conflictB){
+      trocaWarning.style.display = "block";
+      trocaWarning.textContent = conflictA
+        ? `Você já tem serviço no dia ${String(toDay).padStart(2,'0')} — não é possível assumir esse dia também.`
+        : `${toOp} já tem serviço no dia ${fromDay} — não é possível assumir esse dia também.`;
+      submitBtn.disabled = true;
+    } else {
+      trocaWarning.style.display = "none";
+      submitBtn.disabled = false;
+    }
   }
   if(mySel){
     refreshTheirOptions();
     mySel.addEventListener("change", refreshTheirOptions);
     colSel.addEventListener("change", refreshTheirOptions);
+    theirSel.addEventListener("change", checkTrocaConflict);
 
     submitBtn.addEventListener("click", async ()=>{
       const [fromDay, type] = mySel.value.split("|");
@@ -656,6 +812,7 @@ function renderTrocas(el){
       const note = document.getElementById("noteInput").value.trim();
       const newSwap = {
         id: "sw_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
+        mode: "troca",
         fromOp: state.operator, toOp,
         fromDay: parseInt(fromDay,10), toDay: parseInt(toDay,10),
         type, note, status:"pendente", createdAt: Date.now()
@@ -664,6 +821,66 @@ function renderTrocas(el){
       list.push(newSwap);
       await saveSwaps(state.viewMonth, list);
       showToast("Pedido enviado para " + toOp);
+      renderTrocas(el);
+    });
+  }
+
+  /* ---- modo assunção ---- */
+  const assTypeSel = document.getElementById("assTypeSel");
+  const assColSel = document.getElementById("assColSel");
+  const assDaySel = document.getElementById("assDaySel");
+  const assNoteInput = document.getElementById("assNoteInput");
+  const submitAssuncao = document.getElementById("submitAssuncao");
+  const assWarning = document.getElementById("assWarning");
+
+  function refreshAssDayOptions(){
+    const type = assTypeSel.value;
+    const colleague = assColSel.value;
+    const days = curSchedule().filter(d=>d[type]===colleague).map(d=>d.day);
+    assDaySel.innerHTML = days.length
+      ? days.map(day=>`<option value="${day}">Dia ${String(day).padStart(2,'0')} — ${SHIFT_LABEL[type]}${redSuffix(day)}</option>`).join("")
+      : `<option value="">${colleague} não tem serviços desse tipo</option>`;
+    checkAssuncaoConflict();
+  }
+  function checkAssuncaoConflict(){
+    const day = parseInt(assDaySel.value, 10);
+    const note = assNoteInput.value.trim();
+    if(!day){ submitAssuncao.disabled = true; assWarning.style.display="none"; return; }
+    const sch = curSchedule();
+    const conflict = operatorBusyOnDay(sch, day, state.operator);
+    if(conflict){
+      assWarning.style.display = "block";
+      assWarning.textContent = `Você já tem serviço no dia ${String(day).padStart(2,'0')} — não é possível assumir esse dia também.`;
+      submitAssuncao.disabled = true;
+    } else {
+      assWarning.style.display = "none";
+      submitAssuncao.disabled = note.length === 0;
+    }
+  }
+  if(assTypeSel){
+    refreshAssDayOptions();
+    assTypeSel.addEventListener("change", refreshAssDayOptions);
+    assColSel.addEventListener("change", refreshAssDayOptions);
+    assDaySel.addEventListener("change", checkAssuncaoConflict);
+    assNoteInput.addEventListener("input", checkAssuncaoConflict);
+
+    submitAssuncao.addEventListener("click", async ()=>{
+      const type = assTypeSel.value;
+      const holderOp = assColSel.value;
+      const day = parseInt(assDaySel.value, 10);
+      const note = assNoteInput.value.trim();
+      if(!day || !note) return;
+      const newSwap = {
+        id: "as_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
+        mode: "assuncao",
+        fromOp: state.operator, toOp: holderOp,
+        fromDay: day, toDay: null,
+        type, note, status:"pendente", createdAt: Date.now()
+      };
+      const list = curSwaps().slice();
+      list.push(newSwap);
+      await saveSwaps(state.viewMonth, list);
+      showToast("Pedido de assunção enviado para " + holderOp);
       renderTrocas(el);
     });
   }
@@ -687,9 +904,30 @@ async function resolveSwap(id, decision){
   const s = list[idx];
   if(decision === "aceito"){
     const sch = curSchedule().map(d=>({...d}));
-    const fromRow = sch.find(d=>d.day===s.fromDay);
-    const toRow = sch.find(d=>d.day===s.toDay);
-    if(fromRow && toRow && fromRow[s.type]===s.fromOp && toRow[s.type]===s.toOp){
+    const isAssuncao = (s.mode||"troca") === "assuncao";
+    if(isAssuncao){
+      const row = sch.find(d=>d.day===s.fromDay);
+      if(!row || row[s.type] !== s.toOp){
+        showToast("Não foi possível efetivar: a escala mudou desde o pedido.");
+        return;
+      }
+      if(operatorBusyOnDay(sch, s.fromDay, s.fromOp)){
+        showToast(`Não é possível efetivar: ${s.fromOp} já tem serviço no dia ${String(s.fromDay).padStart(2,'0')}.`);
+        return;
+      }
+      row[s.type] = s.fromOp;
+      await saveSchedule(state.viewMonth, sch);
+    } else {
+      const fromRow = sch.find(d=>d.day===s.fromDay);
+      const toRow = sch.find(d=>d.day===s.toDay);
+      if(!fromRow || !toRow || fromRow[s.type]!==s.fromOp || toRow[s.type]!==s.toOp){
+        showToast("Não foi possível efetivar: a escala mudou desde o pedido.");
+        return;
+      }
+      if(operatorBusyOnDay(sch, s.toDay, s.fromOp) || operatorBusyOnDay(sch, s.fromDay, s.toOp)){
+        showToast("Não é possível efetivar: conflito de serviço no mesmo dia.");
+        return;
+      }
       fromRow[s.type] = s.toOp;
       toRow[s.type] = s.fromOp;
       await saveSchedule(state.viewMonth, sch);
@@ -714,7 +952,7 @@ function renderHistorico(el){
     const red = isRedDay(m, d.day);
     const prevDay = idx > 0 ? sch[idx-1] : null;
     const outOp = prevDay ? prevDay.t24 : null;
-    return `<div class="day-row ${red?'red-day':''}">
+    return `<div class="day-row ${red?'red-day':''}" data-day="${d.day}">
       <div class="day-col-date">
         <div class="day-num mono">${String(d.day).padStart(2,'0')}</div>
         <div class="day-wk mono ${red?'red':''}">${weekdayOf(m, d.day)}</div>
@@ -739,12 +977,17 @@ function renderHistorico(el){
   const swapRows = swaps.length===0 ? `<div class="empty-state">Nenhuma troca efetivada neste mês.</div>` :
     swaps.map(s=>{
       const dt = s.resolvedAt ? new Date(s.resolvedAt).toLocaleDateString('pt-BR') : '';
-      return `<div class="req-row">
+      const isAssuncao = (s.mode||"troca") === "assuncao";
+      const label = isAssuncao
+        ? `${s.fromOp} assumiu de ${s.toOp} — dia ${String(s.fromDay).padStart(2,'0')} (${SHIFT_LABEL[s.type]})`
+        : `${s.fromOp} dia ${String(s.fromDay).padStart(2,'0')} ⇄ ${s.toOp} dia ${String(s.toDay).padStart(2,'0')} — ${SHIFT_LABEL[s.type]}`;
+      return `<div class="req-row swap-jump" data-from="${s.fromDay}" data-to="${s.toDay||''}">
         <div class="req-top">
-          <span>${s.fromOp} dia ${String(s.fromDay).padStart(2,'0')} ⇄ ${s.toOp} dia ${String(s.toDay).padStart(2,'0')} — ${SHIFT_LABEL[s.type]}</span>
+          <span>${label}</span>
           <span class="status-pill status-accepted">ACEITO</span>
         </div>
         ${dt? `<div class="req-note">Efetivada em ${dt}</div>` : ""}
+        <div class="jump-hint">toque para ver na escala ↓</div>
       </div>`;
     }).join("");
 
@@ -766,6 +1009,19 @@ function renderHistorico(el){
 
   document.getElementById("histMonthSel").addEventListener("change", async (e)=>{
     await openHistorico(e.target.value);
+  });
+  el.querySelectorAll(".swap-jump").forEach(row=>{
+    row.addEventListener("click", ()=>{
+      el.querySelectorAll(".day-row.highlight").forEach(r=>r.classList.remove("highlight"));
+      const from = row.dataset.from;
+      const to = row.dataset.to;
+      [from, to].filter(v=>v).forEach(day=>{
+        const target = el.querySelector(`.day-row[data-day="${day}"]`);
+        if(target) target.classList.add("highlight");
+      });
+      const first = el.querySelector(`.day-row[data-day="${from}"]`);
+      if(first) first.scrollIntoView({behavior:"smooth", block:"center"});
+    });
   });
 }
 
@@ -825,6 +1081,15 @@ function renderEscalante(el){
 
   el.innerHTML = `
     <div class="banner">Monte ou edite a escala de um mês. As trocas continuam funcionando normalmente depois que a escala é salva. Sábados, domingos e quartas-feiras aparecem marcados como escala vermelha.</div>
+
+    <div class="card">
+      <h3>Importar do Google Sheets</h3>
+      <label for="sheetsImportUrl">Link publicado como CSV da planilha do mês</label>
+      <input id="sheetsImportUrl" type="text" placeholder="https://docs.google.com/.../pub?output=csv">
+      <p style="font-size:11px;color:var(--muted);margin:8px 0 0;">No Sheets: Arquivo → Compartilhar → Publicar na web → formato CSV. A planilha deve ter colunas na ordem DIA, SITFAA, 12H, 24H.</p>
+      <button class="btn secondary" id="importSheetsBtn">Importar para o rascunho abaixo</button>
+    </div>
+
     <div class="month-select-wrap">
       <label>Mês em edição</label>
       <select id="escalanteMonthSel">
@@ -834,8 +1099,61 @@ function renderEscalante(el){
     <div class="section-title">Dias — ${monthLabel(draftMonth)}</div>
     ${dayRows}
     <button class="btn" id="saveEscalante">Salvar escala de ${monthLabel(draftMonth)}</button>
-    <button class="btn secondary" id="lockEscalante">Sair da área do escalante</button>
+
+    <div class="card" style="margin-top:20px;">
+      <h3>Virada de mês — reenviar ao Sheets</h3>
+      <label for="sheetsWebhookUrl">URL do Apps Script (Web App) — configure uma vez</label>
+      <input id="sheetsWebhookUrl" type="text" placeholder="https://script.google.com/macros/s/AAAA/exec" value="${state.sheetsWebhook||''}">
+      <button class="btn secondary" id="saveWebhookBtn">Salvar URL</button>
+      <label for="turnoverMonthSel" style="margin-top:14px;">Mês a encerrar e reenviar</label>
+      <select id="turnoverMonthSel">
+        ${state.months.map(m=>`<option value="${m}" ${m===state.months[state.months.length-1]?'selected':''}>${monthLabel(m)}</option>`).join("")}
+      </select>
+      <p style="font-size:11px;color:var(--muted);margin:8px 0 0;">Reenvia a escala final desse mês (já com todas as trocas aplicadas) para o Sheets, no mesmo formato de entrada.</p>
+      <button class="btn" id="turnoverBtn">Confirmar virada do mês e reenviar</button>
+    </div>
+
+    <button class="btn secondary" id="lockEscalante" style="margin-top:14px;">Sair da área do escalante</button>
   `;
+
+  document.getElementById("importSheetsBtn").addEventListener("click", async ()=>{
+    const url = document.getElementById("sheetsImportUrl").value.trim();
+    if(!url) return;
+    try{
+      const res = await fetch(url);
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      const text = await res.text();
+      state.escalanteDraft = parseScheduleCsv(text, draftMonth);
+      showToast("Escala importada — revise e toque em Salvar");
+      renderEscalante(el);
+    }catch(err){
+      showToast("Falha ao importar: confira se o link foi publicado como CSV");
+    }
+  });
+  document.getElementById("saveWebhookBtn").addEventListener("click", async ()=>{
+    const url = document.getElementById("sheetsWebhookUrl").value.trim();
+    state.sheetsWebhook = url;
+    try{ await kvSet("config:sheetsWebhook", url); showToast("URL salva"); }
+    catch(e){ showToast("Erro ao salvar a URL"); }
+  });
+  document.getElementById("turnoverBtn").addEventListener("click", async ()=>{
+    const webhook = state.sheetsWebhook;
+    if(!webhook){ showToast("Configure a URL do Apps Script primeiro"); return; }
+    const monthToClose = document.getElementById("turnoverMonthSel").value;
+    await ensureMonthLoaded(monthToClose);
+    const csv = buildScheduleCsv(state.scheduleCache[monthToClose]);
+    const swapsDone = (state.swapsCache[monthToClose]||[]).filter(s=>s.status==="aceito");
+    try{
+      await fetch(webhook, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ month: monthToClose, csv, swaps: swapsDone })
+      });
+      showToast("Escala de " + monthLabel(monthToClose) + " reenviada ao Sheets");
+    }catch(err){
+      showToast("Falha ao reenviar — confira a URL do Apps Script");
+    }
+  });
 
   document.getElementById("escalanteMonthSel").addEventListener("change", async (e)=>{
     await openEscalanteMonth(e.target.value);
@@ -843,11 +1161,12 @@ function renderEscalante(el){
   document.getElementById("saveEscalante").addEventListener("click", async ()=>{
     const list = state.months.includes(draftMonth) ? state.months : [...state.months, draftMonth].sort();
     await saveSchedule(draftMonth, state.escalanteDraft);
+    await saveOriginalSchedule(draftMonth, JSON.parse(JSON.stringify(state.escalanteDraft)));
     if(!state.swapsCache[draftMonth]) { state.swapsCache[draftMonth] = []; await saveSwaps(draftMonth, []); }
     await saveMonthsList(list);
     state.viewMonth = draftMonth;
     state.tab = "escala";
-    showToast("Escala de " + monthLabel(draftMonth) + " salva");
+    showToast("Escala de " + monthLabel(draftMonth) + " salva e liberada");
     render();
   });
   document.getElementById("lockEscalante").addEventListener("click", ()=>{
@@ -892,6 +1211,7 @@ async function openEscalanteMonth(monthKey){
   state.months = await loadMonthsList();
   state.viewMonth = state.months[state.months.length-1];
   await ensureMonthLoaded(state.viewMonth);
+  try{ state.sheetsWebhook = await kvGet("config:sheetsWebhook"); }catch(e){ state.sheetsWebhook = null; }
   state.screen = "select";
   render();
 })();
